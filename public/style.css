@@ -1,7 +1,7 @@
 /* =========================================================
    TG BOOST - TELEGRAM NATIVE DESIGN SYSTEM
    - 100% High Contrast: Dark on Light (Day Mode), White on Dark (Night Mode)
-   - Rectangular Shape (চতুর্ভুজ) with Subtle Corner Rounding (4px-6px)
+   - Rectangular Shape with Subtle Corner Rounding (4px-6px)
    - Official Telegram Blue (#24A1DE) Accent
    - No White-on-White or Dark-on-Dark Contrast Bugs
    ========================================================= */
@@ -24,7 +24,7 @@
   --accent-red: #ef4444;
   --accent-red-soft: rgba(239, 68, 68, 0.12);
 
-  /* Rectangular (চতুর্ভুজ) with Subtle Corner Rounding */
+  /* Rectangular with Subtle Corner Rounding */
   --radius-xs: 3px;
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -170,7 +170,7 @@ p, span, label, div, strong, b, li {
   flex: 1;
 }
 
-/* Avatar: Rectangular with subtle round (চতুর্ভুজ) */
+/* Avatar: Rectangular with subtle rounded corners */
 .user-avatar-box {
   position: relative;
   width: 46px;
@@ -738,7 +738,7 @@ p, span, label, div, strong, b, li {
   gap: 10px;
 }
 
-/* Circular Radio Indicator ("গোলাকার সিস্টেম থাকবে, যেটাকে টিক মার্ক করবে") */
+/* Circular Radio Indicator for Wallet Selection */
 .custom-radio-circle {
   width: 22px;
   height: 22px;

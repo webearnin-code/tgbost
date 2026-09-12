@@ -421,12 +421,11 @@ router.get('/withdrawals', async (req, res) => {
 
 // ================= ADMIN APIS =================
 
-// Check Admin middleware helper
+// Check Admin middleware helper (strictly numeric user ID)
 function checkAdminAccess(req, res) {
   const adminId = req.query.adminId || req.body.adminId;
-  const username = req.query.adminUsername || req.body.adminUsername;
-  if (!config.isAdmin({ id: adminId, username })) {
-    res.status(403).json({ error: 'Access Denied: Admin only' });
+  if (!config.isAdmin(adminId)) {
+    res.status(403).json({ error: 'Access Denied: Administrator privileges required.' });
     return false;
   }
   return true;

@@ -33,17 +33,17 @@ const config = {
   // Channel where withdraw proof or logs will be sent (Optional)
   paymentLogChannel: process.env.PAYMENT_LOG_CHANNEL || '',
 
-  // Helper to check if user is admin (supports user ID or username)
+  // Helper to check if user is admin (strictly numeric Telegram User ID)
   isAdmin(userOrId) {
     if (!userOrId) return false;
-    const adminList = this.adminIds.map(a => a.toLowerCase().replace('@', ''));
+    const adminIds = this.adminIds.map(a => String(a).trim());
+    let checkId = '';
     if (typeof userOrId === 'object') {
-      const idStr = String(userOrId.id || '').toLowerCase();
-      const userStr = String(userOrId.username || '').toLowerCase().replace('@', '');
-      return adminList.includes(idStr) || (userStr && adminList.includes(userStr));
+      checkId = String(userOrId.id || '').trim();
+    } else {
+      checkId = String(userOrId).trim();
     }
-    const checkStr = String(userOrId).toLowerCase().replace('@', '');
-    return adminList.includes(checkStr);
+    return checkId !== '' && adminIds.includes(checkId);
   }
 };
 

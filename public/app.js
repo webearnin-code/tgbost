@@ -139,26 +139,19 @@ function initTelegramApp() {
     const idFromParam = params.get('userId') || params.get('id');
     const nameFromParam = params.get('name');
     const userFromParam = params.get('username');
-    const isAdminTest = params.get('admin') === 'true';
 
     if (idFromParam) {
       tgUser = {
         id: idFromParam,
-        first_name: nameFromParam || 'Browser User',
-        username: userFromParam || 'tg_user'
-      };
-    } else if (isAdminTest) {
-      tgUser = {
-        id: '8813841499',
-        first_name: 'Admin',
-        username: 'TgBoost_Ajent'
+        first_name: nameFromParam || 'Member',
+        username: userFromParam || ''
       };
     } else {
-      // Default fallback profile for testing in browser
+      // Default guest profile for testing in browser without Telegram SDK
       tgUser = {
         id: '710029381',
-        first_name: 'John Doe',
-        username: 'johndoe_tg'
+        first_name: 'Guest User',
+        username: 'guest_user'
       };
     }
   }
@@ -1242,138 +1235,7 @@ async function submitAdminCreateTask() {
   }
 }
 
-// Setup Event Listeners
-function setupEventListeners() {
-  // Tab Switching
-  document.querySelectorAll('.nav-item').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const targetTab = btn.getAttribute('data-tab');
-      switchTab(targetTab);
-    });
-  });
-
-  // Home Quick Action Buttons
-  const homeWithdrawBtn = document.getElementById('homeWithdrawBtn');
-  if (homeWithdrawBtn) homeWithdrawBtn.addEventListener('click', () => switchTab('walletTab'));
-
-  const homeTasksBtn = document.getElementById('homeTasksBtn');
-  if (homeTasksBtn) homeTasksBtn.addEventListener('click', () => switchTab('tasksTab'));
-
-  const homeGoAffiliateBtn = document.getElementById('homeGoAffiliateBtn');
-  if (homeGoAffiliateBtn) homeGoAffiliateBtn.addEventListener('click', () => switchTab('affiliateTab'));
-
-  // Copy User ID
-  if (copyIdChip) {
-    copyIdChip.addEventListener('click', () => {
-      if (currentUser?.id) {
-        navigator.clipboard.writeText(String(currentUser.id));
-        triggerHaptic('light');
-        showToast('User ID copied to clipboard!', 'success');
-      }
-    });
-  }
-
-  // Wallet Type Switcher (BDT vs USDT)
-  if (tabBdtWalletBtn && tabUsdtWalletBtn) {
-    tabBdtWalletBtn.addEventListener('click', () => {
-      currentWalletType = 'BDT';
-      tabBdtWalletBtn.classList.add('active-wallet-type');
-      tabUsdtWalletBtn.classList.remove('active-wallet-type');
-      bdtWalletSection.style.display = 'block';
-      usdtWalletSection.style.display = 'none';
-      triggerHaptic('light');
-    });
-
-    tabUsdtWalletBtn.addEventListener('click', () => {
-      currentWalletType = 'USDT';
-      tabUsdtWalletBtn.classList.add('active-wallet-type');
-      tabBdtWalletBtn.classList.remove('active-wallet-type');
-      usdtWalletSection.style.display = 'block';
-      bdtWalletSection.style.display = 'none';
-      triggerHaptic('light');
-    });
-  }
-
-  // Open Add Wallet Modal (BDT and USDT)
-  if (openAddBdtModalBtn) {
-    openAddBdtModalBtn.addEventListener('click', () => openAddWalletModal('BDT'));
-  }
-  if (openAddUsdtModalBtn) {
-    openAddUsdtModalBtn.addEventListener('click', () => openAddWalletModal('USDT'));
-  }
-  if (closeAddWalletModalBtn) {
-    closeAddWalletModalBtn.addEventListener('click', closeAddWalletModal);
-  }
-  if (addWalletModalBackdrop) {
-    addWalletModalBackdrop.addEventListener('click', (e) => {
-      if (e.target === addWalletModalBackdrop) closeAddWalletModal();
-    });
-  }
-  if (submitAddWalletBtn) {
-    submitAddWalletBtn.addEventListener('click', submitAddNewWallet);
-  }
-  document.querySelectorAll('.provider-select-pill').forEach(pill => {
-    pill.addEventListener('click', () => {
-      selectModalProvider(pill.getAttribute('data-provider'));
-    });
-  });
-
-  // BDT Amount Chips
-  document.querySelectorAll('.chip-btn[data-amt]').forEach(chip => {
-    chip.addEventListener('click', () => {
-      bdtAmountInput.value = chip.getAttribute('data-amt');
-      triggerHaptic('light');
-    });
-  });
-
-  const bdtMaxChip = document.getElementById('bdtMaxChip');
-  if (bdtMaxChip) {
-    bdtMaxChip.addEventListener('click', () => {
-      if (currentUser?.balance) {
-        bdtAmountInput.value = Math.floor(parseFloat(currentUser.balance));
-        triggerHaptic('light');
-      }
-    });
-  }
-
-  // USDT Amount Chips & Live Calculation
-  document.querySelectorAll('.chip-btn[data-usdt]').forEach(chip => {
-    chip.addEventListener('click', () => {
-      usdtAmountInput.value = chip.getAttribute('data-usdt');
-      updateUsdtCostPreview();
-      triggerHaptic('light');
-    });
-  });
-
-  const usdtMaxChip = document.getElementById('usdtMaxChip');
-  if (usdtMaxChip) {
-    usdtMaxChip.addEventListener('click', () => {
-      if (currentUser?.balance) {
-        const maxUsdt = (parseFloat(currentUser.balance) / usdtRate).toFixed(2);
-        usdtAmountInput.value = maxUsdt;
-        updateUsdtCostPreview();
-        triggerHaptic('light');
-      }
-    });
-  }
-
-  if (usdtAmountInput) {
-    usdtAmountInput.addEventListener('input', updateUsdtCostPreview);
-  }
-
-  function updateUsdtCostPreview() {
-    const val = parseFloat(usdtAmountInput.value || '0');
-    if (!isNaN(val) && val > 0) {
-      const cost = (val * usdtRate).toFixed(2);
-      usdtCostPreview.innerHTML = `Deducts: <b>${cost} ৳</b> from your BDT wallet balance.`;
-    } else {
-      usdtCostPreview.innerHTML = `Deducts: <b>0.00 ৳</b> from your BDT wallet balance.`;
-    }
-  }
-
-  // Submit Cashouts
-  if (submitBdtWithdrawBtn) submitBdtWithdrawBtn.addEventListener('click', submitBdtWithdrawal);
-  if (submitUsdtWithdrawBtn) submitUsdtWithdrawBtn.addEventListener('click', submitUsdtWithdrawal);
+// ================= AFFILIATE & SOCIAL FUNCTIONS =================
 
 // Escape HTML Helper
 function escapeHtml(str) {
@@ -1518,6 +1380,139 @@ function closeSocialShareModal() {
   const modal = document.getElementById('socialShareModal');
   if (modal) modal.style.display = 'none';
 }
+
+// Setup Event Listeners
+function setupEventListeners() {
+  // Tab Switching
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetTab = btn.getAttribute('data-tab');
+      switchTab(targetTab);
+    });
+  });
+
+  // Home Quick Action Buttons
+  const homeWithdrawBtn = document.getElementById('homeWithdrawBtn');
+  if (homeWithdrawBtn) homeWithdrawBtn.addEventListener('click', () => switchTab('walletTab'));
+
+  const homeTasksBtn = document.getElementById('homeTasksBtn');
+  if (homeTasksBtn) homeTasksBtn.addEventListener('click', () => switchTab('tasksTab'));
+
+  const homeGoAffiliateBtn = document.getElementById('homeGoAffiliateBtn');
+  if (homeGoAffiliateBtn) homeGoAffiliateBtn.addEventListener('click', () => switchTab('affiliateTab'));
+
+  // Copy User ID
+  if (copyIdChip) {
+    copyIdChip.addEventListener('click', () => {
+      if (currentUser?.id) {
+        navigator.clipboard.writeText(String(currentUser.id));
+        triggerHaptic('light');
+        showToast('User ID copied to clipboard!', 'success');
+      }
+    });
+  }
+
+  // Wallet Type Switcher (BDT vs USDT)
+  if (tabBdtWalletBtn && tabUsdtWalletBtn) {
+    tabBdtWalletBtn.addEventListener('click', () => {
+      currentWalletType = 'BDT';
+      tabBdtWalletBtn.classList.add('active-wallet-type');
+      tabUsdtWalletBtn.classList.remove('active-wallet-type');
+      bdtWalletSection.style.display = 'block';
+      usdtWalletSection.style.display = 'none';
+      triggerHaptic('light');
+    });
+
+    tabUsdtWalletBtn.addEventListener('click', () => {
+      currentWalletType = 'USDT';
+      tabUsdtWalletBtn.classList.add('active-wallet-type');
+      tabBdtWalletBtn.classList.remove('active-wallet-type');
+      usdtWalletSection.style.display = 'block';
+      bdtWalletSection.style.display = 'none';
+      triggerHaptic('light');
+    });
+  }
+
+  // Open Add Wallet Modal (BDT and USDT)
+  if (openAddBdtModalBtn) {
+    openAddBdtModalBtn.addEventListener('click', () => openAddWalletModal('BDT'));
+  }
+  if (openAddUsdtModalBtn) {
+    openAddUsdtModalBtn.addEventListener('click', () => openAddWalletModal('USDT'));
+  }
+  if (closeAddWalletModalBtn) {
+    closeAddWalletModalBtn.addEventListener('click', closeAddWalletModal);
+  }
+  if (addWalletModalBackdrop) {
+    addWalletModalBackdrop.addEventListener('click', (e) => {
+      if (e.target === addWalletModalBackdrop) closeAddWalletModal();
+    });
+  }
+  if (submitAddWalletBtn) {
+    submitAddWalletBtn.addEventListener('click', submitAddNewWallet);
+  }
+  document.querySelectorAll('.provider-select-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      selectModalProvider(pill.getAttribute('data-provider'));
+    });
+  });
+
+  // BDT Amount Chips
+  document.querySelectorAll('.chip-btn[data-amt]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      bdtAmountInput.value = chip.getAttribute('data-amt');
+      triggerHaptic('light');
+    });
+  });
+
+  const bdtMaxChip = document.getElementById('bdtMaxChip');
+  if (bdtMaxChip) {
+    bdtMaxChip.addEventListener('click', () => {
+      if (currentUser?.balance) {
+        bdtAmountInput.value = Math.floor(parseFloat(currentUser.balance));
+        triggerHaptic('light');
+      }
+    });
+  }
+
+  // USDT Amount Chips & Live Calculation
+  document.querySelectorAll('.chip-btn[data-usdt]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      usdtAmountInput.value = chip.getAttribute('data-usdt');
+      updateUsdtCostPreview();
+      triggerHaptic('light');
+    });
+  });
+
+  const usdtMaxChip = document.getElementById('usdtMaxChip');
+  if (usdtMaxChip) {
+    usdtMaxChip.addEventListener('click', () => {
+      if (currentUser?.balance) {
+        const maxUsdt = (parseFloat(currentUser.balance) / usdtRate).toFixed(2);
+        usdtAmountInput.value = maxUsdt;
+        updateUsdtCostPreview();
+        triggerHaptic('light');
+      }
+    });
+  }
+
+  if (usdtAmountInput) {
+    usdtAmountInput.addEventListener('input', updateUsdtCostPreview);
+  }
+
+  function updateUsdtCostPreview() {
+    const val = parseFloat(usdtAmountInput.value || '0');
+    if (!isNaN(val) && val > 0) {
+      const cost = (val * usdtRate).toFixed(2);
+      usdtCostPreview.innerHTML = `Deducts: <b>${cost} ৳</b> from your BDT wallet balance.`;
+    } else {
+      usdtCostPreview.innerHTML = `Deducts: <b>0.00 ৳</b> from your BDT wallet balance.`;
+    }
+  }
+
+  // Submit Cashouts
+  if (submitBdtWithdrawBtn) submitBdtWithdrawBtn.addEventListener('click', submitBdtWithdrawal);
+  if (submitUsdtWithdrawBtn) submitUsdtWithdrawBtn.addEventListener('click', submitUsdtWithdrawal);
 
   // Copy Referral Link
   const copyRefBtn = document.getElementById('copyRefBtn');

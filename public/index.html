@@ -55,7 +55,10 @@
           <div class="user-text-details">
             <div class="user-display-name">
               <span id="userDisplayName">Member</span>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="var(--tg-blue)" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+              <svg class="tg-verified-badge" width="16" height="16" viewBox="0 0 24 24" fill="none" style="vertical-align: middle; margin-left: 2px;">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M10.12 2.87a2.5 2.5 0 013.76 0l.48.52c.44.47 1.05.72 1.69.69l.71-.03a2.5 2.5 0 012.6 2.6l-.03.71c-.03.64.22 1.25.69 1.69l.52.48a2.5 2.5 0 010 3.76l-.52.48c-.47.44-.72 1.05-.69 1.69l.03.71a2.5 2.5 0 01-2.6 2.6l-.71-.03c-.64-.03-1.25.22-1.69.69l-.48.52a2.5 2.5 0 01-3.76 0l-.48-.52c-.44-.47-1.05-.72-1.69-.69l-.71.03a2.5 2.5 0 01-2.6-2.6l.03-.71c.03-.64-.22-1.25-.69-1.69l-.52-.48a2.5 2.5 0 010-3.76l.52-.48c.47-.44.72-1.05.69-1.69l-.03-.71a2.5 2.5 0 012.6-2.6l.71.03c.64.03 1.25-.22 1.69-.69l.48-.52z" fill="#24A1DE"/>
+                <path d="M9.5 12.5l2 2 4.5-4.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
               <span id="homeAdminBadge" class="admin-tag" style="display: none;">ADMIN</span>
             </div>
             <div class="user-username-tag" id="userUsernameTag">@username</div>
@@ -357,22 +360,22 @@
         <div class="affiliate-stat-card">
           <div class="aff-stat-label">Total Invites</div>
           <div class="aff-stat-val" id="refTotalInvites">0</div>
-          <div class="aff-stat-sub">মোট ইনভাইট</div>
+          <div class="aff-stat-sub">Total Referrals</div>
         </div>
         <div class="affiliate-stat-card active-theme">
           <div class="aff-stat-label">Active Invites</div>
           <div class="aff-stat-val text-green" id="refActiveInvites">0</div>
-          <div class="aff-stat-sub">সফল / অ্যাক্টিভ</div>
+          <div class="aff-stat-sub">Qualified Members</div>
         </div>
         <div class="affiliate-stat-card pending-theme">
           <div class="aff-stat-label">Pending Invites</div>
           <div class="aff-stat-val text-amber" id="refPendingInvites">0</div>
-          <div class="aff-stat-sub">পেন্ডিং মেম্বার</div>
+          <div class="aff-stat-sub">Needs 1 Referral</div>
         </div>
         <div class="affiliate-stat-card earnings-theme">
           <div class="aff-stat-label">Total Income</div>
           <div class="aff-stat-val text-blue" id="refTotalEarnings">0.00 ৳</div>
-          <div class="aff-stat-sub">অ্যাফিলিয়েট আয়</div>
+          <div class="aff-stat-sub">Affiliate Earnings</div>
         </div>
       </div>
 
@@ -383,7 +386,7 @@
         </div>
         <div class="promo-title">Want Members for Your Telegram Channel?</div>
         <div class="promo-desc">
-          আপনার টেলিগ্রাম চ্যানেল বা গ্রুপে রিয়েল ও অ্যাক্টিভ মেম্বার যুক্ত করতে চান? সরাসরি আমাদের অফিসিয়াল এজেন্টের সাথে যোগাযোগ করে অর্ডার করুন।
+          Looking to boost your Telegram channel or group with real and active members? Contact our official agent directly to launch custom promotion campaigns.
         </div>
         <div class="promo-features">
           <div class="promo-feature-item">
@@ -417,18 +420,18 @@
 
       <!-- How it Works Guide -->
       <div class="content-card" style="font-size: 12px; line-height: 1.6; color: var(--text-muted); margin-top: 14px;">
-        <div style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">রেফারেল নিয়মাবলী (Rules & Info):</div>
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">Affiliate Program Rules & Details:</div>
         <p style="margin-bottom: 6px;">
-          <b>১. লিঙ্ক শেয়ার:</b> উপরের "Share on Social" বা Copy বাটনে চাপ দিয়ে সোশ্যাল মিডিয়ায় বন্ধুদের সাথে লিঙ্ক শেয়ার করুন।
+          <b>1. Share Your Link:</b> Tap "Share on Social" or copy your exclusive link and share with friends on WhatsApp, Facebook, Telegram, etc.
         </p>
         <p style="margin-bottom: 6px;">
-          <b>২. পেন্ডিং স্ট্যাটাস:</b> কেউ আপনার লিংকে জয়েন করলে প্রাথমিকভাবে সে <b>"Pending"</b> হিসেবে তালিকায় থাকবে।
+          <b>2. Pending Status:</b> When a new user joins through your link, they initially appear in your list as <b>"Pending"</b>.
         </p>
         <p style="margin-bottom: 6px;">
-          <b>৩. অ্যাক্টিভেশন ও বোনাস:</b> আপনার আমন্ত্রিত সদস্য যখন নিজে অন্য কমপক্ষে ১ জনকে রেফার করবে, তখন সে সাথে সাথে <b>"Active"</b> হয়ে যাবে এবং আপনার মূল ব্যালেন্সে <b>+1.00 ৳</b> যোগ হবে।
+          <b>3. Activation & Reward:</b> As soon as your invited friend refers at least 1 member, their status turns to <b>"Active"</b> and <b>+1.00 ৳</b> is immediately credited to your main balance.
         </p>
         <p>
-          <b>৪. কোনো রেফারেল সীমা নেই:</b> আপনি যত খুশি সদস্য রেফার করতে পারবেন।
+          <b>4. Unlimited Earnings:</b> There is no limit on invitations. The more active members you invite, the more rewards you earn!
         </p>
       </div>
     </section>
@@ -622,7 +625,7 @@
       </button>
       <!-- ONLY VISIBLE TO ADMIN -->
       <button class="nav-item" id="adminNavBtn" data-tab="adminTab" style="display: none;">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
         <span class="nav-label">Admin</span>
       </button>
     </nav>

@@ -301,16 +301,15 @@ async function loadUserData(tgUser, startParam) {
     renderHomeRecentActivity(data.recentTasks || [], data.recentWithdrawals || []);
 
     // Update Affiliate Section
-    const refCount = currentUser.referral_count || 0;
-    const refEarnings = (refCount * (data.referralReward || 1)).toFixed(2);
-    
-    document.getElementById('refCountDisplay').textContent = refCount;
-    document.getElementById('refEarningsDisplay').textContent = refEarnings;
-    homeRefCount.textContent = refCount;
-    homeRefEarnings.textContent = refEarnings;
+    if (data.affiliate) {
+      renderAffiliateUI(data.affiliate);
+    } else {
+      loadAffiliateData();
+    }
 
     const refLink = `https://t.me/${botUsername}?start=ref_${currentUser.id}`;
-    document.getElementById('referralLinkInput').value = refLink;
+    const refLinkInput = document.getElementById('referralLinkInput');
+    if (refLinkInput) refLinkInput.value = refLink;
 
     // Preload Tasks & History
     loadTasks();
@@ -371,7 +370,7 @@ function renderSavedWalletsUI() {
   const usdtWallets = userWallets.filter(w => (w.wallet_type || '').toUpperCase() === 'USDT');
 
   if (bdtSavedCountBadge) bdtSavedCountBadge.textContent = `${bdtWallets.length} Saved`;
-  if (usdtSavedCountBadge) usdtSavedCountBadge.textContent = `${usdtWallets.length} Saved`;
+  if (usdtSavedCountBadge) usdtSavedCountBadge.textContent = `${usdtWallets.length} / 1 Saved`;
 
   // Auto-select default or first if none selected
   if (!selectedBdtWalletId && bdtWallets.length > 0) {
@@ -393,7 +392,7 @@ function renderSavedWalletsUI() {
     openAddBdtModalBtn.style.display = bdtWallets.length >= 2 ? 'none' : 'flex';
   }
   if (openAddUsdtModalBtn) {
-    openAddUsdtModalBtn.style.display = usdtWallets.length >= 2 ? 'none' : 'flex';
+    openAddUsdtModalBtn.style.display = usdtWallets.length >= 1 ? 'none' : 'flex';
   }
 
   // Render BDT List
@@ -1376,6 +1375,150 @@ function setupEventListeners() {
   if (submitBdtWithdrawBtn) submitBdtWithdrawBtn.addEventListener('click', submitBdtWithdrawal);
   if (submitUsdtWithdrawBtn) submitUsdtWithdrawBtn.addEventListener('click', submitUsdtWithdrawal);
 
+// Escape HTML Helper
+function escapeHtml(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// Render Affiliate UI with Stats and Members List
+function renderAffiliateUI(affiliate) {
+  if (!affiliate) return;
+  const total = affiliate.totalInvites || 0;
+  const active = affiliate.activeInvites || 0;
+  const pending = affiliate.pendingInvites || 0;
+  const earned = affiliate.totalEarned || '0.00';
+
+  const refTotalEl = document.getElementById('refTotalInvites');
+  const refActiveEl = document.getElementById('refActiveInvites');
+  const refPendingEl = document.getElementById('refPendingInvites');
+  const refEarningsEl = document.getElementById('refTotalEarnings');
+  const badgeEl = document.getElementById('refMembersCountBadge');
+
+  if (refTotalEl) refTotalEl.textContent = total;
+  if (refActiveEl) refActiveEl.textContent = active;
+  if (refPendingEl) refPendingEl.textContent = pending;
+  if (refEarningsEl) refEarningsEl.textContent = `${earned} ৳`;
+  if (badgeEl) badgeEl.textContent = `${total} Members`;
+
+  // Home tab stats
+  if (homeRefCount) homeRefCount.textContent = active;
+  if (homeRefEarnings) homeRefEarnings.textContent = earned;
+
+  // Render Member List
+  const listEl = document.getElementById('referredMembersList');
+  if (listEl) {
+    const referrals = affiliate.referrals || [];
+    if (referrals.length === 0) {
+      listEl.innerHTML = `
+        <div class="empty-box">
+          <div class="empty-box-title">No Referrals Yet</div>
+          <div class="empty-box-sub">Share your invite link above to bring friends and earn!</div>
+        </div>
+      `;
+    } else {
+      let html = '';
+      referrals.forEach(m => {
+        const initial = (m.name || 'M').charAt(0).toUpperCase();
+        const dateStr = m.joinedAt ? new Date(m.joinedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+        const isActive = m.status === 'active';
+        html += `
+          <div class="referred-member-card">
+            <div class="ref-member-left">
+              <div class="ref-member-avatar">${initial}</div>
+              <div class="ref-member-info">
+                <div class="ref-member-name">${escapeHtml(m.name)}</div>
+                <div class="ref-member-sub">${m.username ? escapeHtml(m.username) + ' • ' : ''}${dateStr}</div>
+              </div>
+            </div>
+            <div class="ref-member-right">
+              ${isActive 
+                ? `<span class="ref-status-pill active"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg> Active</span><span class="ref-reward-sub" style="color: #10b981;">+1.00 ৳ Earned</span>`
+                : `<span class="ref-status-pill pending"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Pending</span><span class="ref-reward-sub" style="color: #f59e0b;">Needs 1 referral</span>`
+              }
+            </div>
+          </div>
+        `;
+      });
+      listEl.innerHTML = html;
+    }
+  }
+}
+
+// Fetch Affiliate Data
+async function loadAffiliateData() {
+  if (!currentUser) return;
+  try {
+    const res = await fetch(`/api/affiliate?userId=${currentUser.id}`);
+    const data = await res.json();
+    if (data.success) {
+      renderAffiliateUI(data);
+    }
+  } catch (e) {
+    console.error('Error fetching affiliate data:', e);
+  }
+}
+
+// Share on Social
+async function shareOnSocial() {
+  triggerHaptic('medium');
+  const input = document.getElementById('referralLinkInput');
+  const refLink = input && input.value ? input.value : `https://t.me/${botUsername}?start=ref_${currentUser ? currentUser.id : ''}`;
+  const shareText = `Join TG BOOST to earn daily cash rewards by completing simple Telegram tasks!\nInstant cashouts via bKash, Nagad, and Binance.\nJoin now:\n${refLink}`;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: 'TG BOOST - Earn Rewards Daily',
+        text: shareText,
+        url: refLink
+      });
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+    }
+  }
+
+  // Fallback: Open Social Share Modal
+  openSocialShareModal(refLink, shareText);
+}
+
+// Open Social Share Modal Fallback
+function openSocialShareModal(refLink, shareText) {
+  const modal = document.getElementById('socialShareModal');
+  if (!modal) return;
+
+  const waBtn = document.getElementById('shareWhatsappBtn');
+  const fbBtn = document.getElementById('shareFacebookBtn');
+  const tgBtn = document.getElementById('shareTelegramFallbackBtn');
+  const copyBtn = document.getElementById('copyShareModalBtn');
+
+  const encodedUrl = encodeURIComponent(refLink);
+  const encodedText = encodeURIComponent(shareText);
+
+  if (waBtn) waBtn.href = `https://api.whatsapp.com/send?text=${encodedText}`;
+  if (fbBtn) fbBtn.href = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
+  if (tgBtn) tgBtn.href = `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`;
+
+  if (copyBtn) {
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(refLink);
+      showToast('Referral link copied!', 'success');
+      triggerHaptic('light');
+    };
+  }
+
+  modal.style.display = 'flex';
+}
+
+// Close Social Share Modal Fallback
+function closeSocialShareModal() {
+  const modal = document.getElementById('socialShareModal');
+  if (modal) modal.style.display = 'none';
+}
+
   // Copy Referral Link
   const copyRefBtn = document.getElementById('copyRefBtn');
   if (copyRefBtn) {
@@ -1388,14 +1531,22 @@ function setupEventListeners() {
     });
   }
 
-  // Share on Telegram
-  const shareTelegramBtn = document.getElementById('shareTelegramBtn');
-  if (shareTelegramBtn) {
-    shareTelegramBtn.addEventListener('click', () => {
-      const link = document.getElementById('referralLinkInput').value;
-      const text = encodeURIComponent(`Join Telegram channels and earn daily cash rewards with instant payouts!\nStart earning today on TG BOOST:\n${link}`);
-      window.open(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${text}`, '_blank');
-      triggerHaptic('medium');
+  // Share on Social
+  const shareSocialBtn = document.getElementById('shareSocialBtn');
+  if (shareSocialBtn) {
+    shareSocialBtn.addEventListener('click', shareOnSocial);
+  }
+
+  // Close Social Share Modal
+  const closeSocialShareModalBtn = document.getElementById('closeSocialShareModalBtn');
+  if (closeSocialShareModalBtn) {
+    closeSocialShareModalBtn.addEventListener('click', closeSocialShareModal);
+  }
+
+  const socialShareModal = document.getElementById('socialShareModal');
+  if (socialShareModal) {
+    socialShareModal.addEventListener('click', (e) => {
+      if (e.target === socialShareModal) closeSocialShareModal();
     });
   }
 
@@ -1435,6 +1586,7 @@ function switchTab(tabId) {
   // Load specific tab data
   if (tabId === 'tasksTab') loadTasks();
   if (tabId === 'walletTab') loadWithdrawalHistory();
+  if (tabId === 'affiliateTab') loadAffiliateData();
   if (tabId === 'adminTab') loadAdminData();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });

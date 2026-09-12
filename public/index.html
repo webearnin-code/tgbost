@@ -259,7 +259,7 @@
       <div id="usdtWalletSection" style="display: none;">
         <div class="section-header" style="margin-top: 4px;">
           <h3 class="section-title" style="font-size: 13px;">Saved Binance / USDT Accounts</h3>
-          <span class="badge-tag" id="usdtSavedCountBadge">0 Saved</span>
+          <span class="badge-tag" id="usdtSavedCountBadge">0 / 1 Saved</span>
         </div>
 
         <div id="savedUsdtWalletsList" class="saved-wallets-grid">
@@ -273,7 +273,7 @@
           </div>
           <div class="add-card-info">
             <div class="add-card-title">Add Binance ID / Pay ID</div>
-            <div class="add-card-sub">Instant USDT Payouts</div>
+            <div class="add-card-sub">Max 1 Account • Instant USDT Payouts</div>
           </div>
           <div class="add-card-arrow">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -333,39 +333,103 @@
 
     <!-- ================= TAB 4: AFFILIATE ================= -->
     <section id="affiliateTab" class="tab-content">
+      <!-- Invite Link Card -->
       <div class="content-card" style="text-align: center;">
-        <span class="badge-tag" style="margin-bottom: 8px;">Referral Program</span>
-        <h2 style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Invite Friends and Earn</h2>
-        <p style="font-size: 12px; color: var(--text-muted);">
-          Earn instant <b style="color: var(--tg-blue);">+1.00 ৳</b> reward for every friend who joins via your link.
+        <span class="badge-tag" style="margin-bottom: 8px;">Affiliate & Referral Program</span>
+        <h2 style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Invite Friends & Earn</h2>
+        <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
+          Share your referral link. Earn <b style="color: #00c853;">+1.00 ৳</b> reward when your invited member activates!
         </p>
 
-        <div class="link-copy-container">
+        <div class="link-copy-container" style="margin-top: 10px;">
           <input type="text" id="referralLinkInput" class="link-text-field" readonly value="Loading link...">
           <button class="link-copy-button" id="copyRefBtn">Copy</button>
         </div>
 
-        <button class="btn-blue" id="shareTelegramBtn" style="width: 100%;">
-          Share on Telegram
+        <button class="btn-blue" id="shareSocialBtn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+          <span>Share on Social</span>
         </button>
       </div>
 
-      <div class="stats-grid-2">
-        <div class="stat-box">
-          <div class="stat-box-label">Successful Invites</div>
-          <div class="stat-box-value"><span id="refCountDisplay">0</span> Members</div>
+      <!-- 4-Stat Grid -->
+      <div class="affiliate-stats-grid">
+        <div class="affiliate-stat-card">
+          <div class="aff-stat-label">Total Invites</div>
+          <div class="aff-stat-val" id="refTotalInvites">0</div>
+          <div class="aff-stat-sub">মোট ইনভাইট</div>
         </div>
-        <div class="stat-box">
-          <div class="stat-box-label">Total Affiliate Income</div>
-          <div class="stat-box-value"><span id="refEarningsDisplay">0.00</span> ৳</div>
+        <div class="affiliate-stat-card active-theme">
+          <div class="aff-stat-label">Active Invites</div>
+          <div class="aff-stat-val text-green" id="refActiveInvites">0</div>
+          <div class="aff-stat-sub">সফল / অ্যাক্টিভ</div>
+        </div>
+        <div class="affiliate-stat-card pending-theme">
+          <div class="aff-stat-label">Pending Invites</div>
+          <div class="aff-stat-val text-amber" id="refPendingInvites">0</div>
+          <div class="aff-stat-sub">পেন্ডিং মেম্বার</div>
+        </div>
+        <div class="affiliate-stat-card earnings-theme">
+          <div class="aff-stat-label">Total Income</div>
+          <div class="aff-stat-val text-blue" id="refTotalEarnings">0.00 ৳</div>
+          <div class="aff-stat-sub">অ্যাফিলিয়েট আয়</div>
         </div>
       </div>
 
-      <div class="content-card" style="font-size: 12px; line-height: 1.6; color: var(--text-muted);">
-        <div style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">How It Works</div>
-        <p>1. Copy your personal referral link above and share it with friends.</p>
-        <p>2. When your friend launches the bot and starts earning, you instantly get <b>+1.00 ৳</b> credited to your balance.</p>
-        <p>3. There is no limit on referrals. The more members you invite, the more you earn.</p>
+      <!-- Channel Promotion / Buy Members Service Card -->
+      <div class="promo-service-card">
+        <div class="promo-badge-row">
+          <span class="promo-tag">🚀 Channel / Group Promotion</span>
+        </div>
+        <div class="promo-title">Want Members for Your Telegram Channel?</div>
+        <div class="promo-desc">
+          আপনার টেলিগ্রাম চ্যানেল বা গ্রুপে রিয়েল ও অ্যাক্টিভ মেম্বার যুক্ত করতে চান? সরাসরি আমাদের অফিসিয়াল এজেন্টের সাথে যোগাযোগ করে অর্ডার করুন।
+        </div>
+        <div class="promo-features">
+          <div class="promo-feature-item">
+            <span class="promo-check">✓</span> 100% Real Active Telegram Users
+          </div>
+          <div class="promo-feature-item">
+            <span class="promo-check">✓</span> Guaranteed Retention & Fast Delivery
+          </div>
+          <div class="promo-feature-item">
+            <span class="promo-check">✓</span> Affordable Custom Member Packages
+          </div>
+        </div>
+        <a href="https://t.me/TgBoost_Ajent" target="_blank" class="promo-agent-btn" id="contactAgentBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.77-1.18 3.35-1.38 3.73-1.39.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .36z"/></svg>
+          <span>Contact Official Agent (@TgBoost_Ajent)</span>
+        </a>
+      </div>
+
+      <!-- Invited Members List -->
+      <div class="section-header" style="margin-top: 14px;">
+        <h3 class="section-title" style="font-size: 14px;">Invited Members List</h3>
+        <span class="badge-tag" id="refMembersCountBadge">0 Members</span>
+      </div>
+
+      <div id="referredMembersList" class="referred-members-container">
+        <div class="empty-box">
+          <div class="empty-box-title">No Referrals Yet</div>
+          <div class="empty-box-sub">Share your invite link above to bring friends and earn!</div>
+        </div>
+      </div>
+
+      <!-- How it Works Guide -->
+      <div class="content-card" style="font-size: 12px; line-height: 1.6; color: var(--text-muted); margin-top: 14px;">
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">রেফারেল নিয়মাবলী (Rules & Info):</div>
+        <p style="margin-bottom: 6px;">
+          <b>১. লিঙ্ক শেয়ার:</b> উপরের "Share on Social" বা Copy বাটনে চাপ দিয়ে সোশ্যাল মিডিয়ায় বন্ধুদের সাথে লিঙ্ক শেয়ার করুন।
+        </p>
+        <p style="margin-bottom: 6px;">
+          <b>২. পেন্ডিং স্ট্যাটাস:</b> কেউ আপনার লিংকে জয়েন করলে প্রাথমিকভাবে সে <b>"Pending"</b> হিসেবে তালিকায় থাকবে।
+        </p>
+        <p style="margin-bottom: 6px;">
+          <b>৩. অ্যাক্টিভেশন ও বোনাস:</b> আপনার আমন্ত্রিত সদস্য যখন নিজে অন্য কমপক্ষে ১ জনকে রেফার করবে, তখন সে সাথে সাথে <b>"Active"</b> হয়ে যাবে এবং আপনার মূল ব্যালেন্সে <b>+1.00 ৳</b> যোগ হবে।
+        </p>
+        <p>
+          <b>৪. কোনো রেফারেল সীমা নেই:</b> আপনি যত খুশি সদস্য রেফার করতে পারবেন।
+        </p>
       </div>
     </section>
 
@@ -501,6 +565,39 @@
           <button type="button" class="btn-blue" id="submitAddWalletBtn" style="width: 100%; margin-top: 14px;">
             Save Account
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= SOCIAL SHARE MODAL (FALLBACK) ================= -->
+    <div class="modal-overlay" id="socialShareModal" style="display: none;">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <div class="modal-title">Share via Social Media</div>
+          <button class="modal-close-btn" id="closeSocialShareModalBtn">&times;</button>
+        </div>
+        <div style="padding: 16px;">
+          <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+            Choose a platform below to share your personal referral link:
+          </div>
+          <div class="social-share-grid">
+            <a href="#" id="shareWhatsappBtn" target="_blank" class="social-share-pill whatsapp">
+              <span class="social-icon">🟢</span>
+              <span class="social-name">WhatsApp</span>
+            </a>
+            <a href="#" id="shareFacebookBtn" target="_blank" class="social-share-pill facebook">
+              <span class="social-icon">🔵</span>
+              <span class="social-name">Facebook</span>
+            </a>
+            <a href="#" id="shareTelegramFallbackBtn" target="_blank" class="social-share-pill telegram">
+              <span class="social-icon">✈️</span>
+              <span class="social-name">Telegram</span>
+            </a>
+            <button type="button" id="copyShareModalBtn" class="social-share-pill copy">
+              <span class="social-icon">📋</span>
+              <span class="social-name">Copy Link</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

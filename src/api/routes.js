@@ -16,38 +16,54 @@ router.get('/user', async (req, res) => {
       return res.status(400).json({ error: 'User ID is required' });
     }
 
-    const { user, isNew, referrerId } = await db.getOrCreateUser(
+    const { user, isNew, referrerId, qualifiedReferral } = await db.getOrCreateUser(
       { id, username, first_name, last_name },
       referrer
     );
 
-    // Reward referrer if new user
-    if (isNew && referrerId && config.referralReward > 0) {
+    const bot = getBot(req);
+
+    // If new user joined via referral, notify the referrer that they have a new pending invite
+    if (isNew && referrerId && bot) {
       try {
-        await db.addBalance(referrerId, config.referralReward, true);
-        const bot = getBot(req);
-        if (bot) {
-          await bot.telegram.sendMessage(
-            referrerId,
-            `New Referral Reward!\n\n` +
-            `User: ${first_name || 'New Member'} joined using your referral link.\n` +
-            `You earned: +${config.referralReward.toFixed(2)} ${config.currency}`,
-            { parse_mode: 'HTML' }
-          );
-        }
+        await bot.telegram.sendMessage(
+          referrerId,
+          `👥 <b>New Referral Joined!</b>\n\n` +
+          `User: <b>${first_name || username || 'New Member'}</b> joined using your referral link.\n` +
+          `Status: <b>⏳ Pending</b>\n` +
+          `Once this member refers at least 1 friend, your <b>+${config.referralReward.toFixed(2)} ${config.currency}</b> reward will be credited!`,
+          { parse_mode: 'HTML' }
+        );
       } catch (e) {
-        console.error('Referral notify error:', e.message);
+        console.error('Referral join notify error:', e.message);
+      }
+    }
+
+    // If a referral just qualified (i.e. User B just referred this new user and qualified User A)
+    if (qualifiedReferral && bot) {
+      try {
+        await bot.telegram.sendMessage(
+          qualifiedReferral.rewardedUserId,
+          `🎉 <b>Referral Bonus Activated!</b>\n\n` +
+          `Your invited member <b>${qualifiedReferral.qualifiedUser.first_name || qualifiedReferral.qualifiedUser.username || 'Member'}</b> referred a new user and is now Active!\n` +
+          `You earned: <b>+${qualifiedReferral.rewardAmount.toFixed(2)} ${config.currency}</b> (credited to your main balance)`,
+          { parse_mode: 'HTML' }
+        );
+      } catch (e) {
+        console.error('Referral activate notify error:', e.message);
       }
     }
 
     const completed = await db.getUserCompletedTasks(id);
     const withdrawals = await db.getUserWithdrawals(id);
     const wallets = await db.getUserWallets(id);
+    const affiliate = await db.getAffiliateData(id);
     const isAdmin = config.isAdmin({ id, username });
 
     res.json({
       user,
       wallets,
+      affiliate,
       completedCount: completed.length,
       recentTasks: completed.slice(0, 5),
       recentWithdrawals: withdrawals.slice(0, 5),
@@ -207,8 +223,13 @@ router.post('/wallet/add', async (req, res) => {
     }
 
     const existing = await db.getUserWallets(userId, type);
-    if (existing && existing.length >= 2) {
-      return res.status(400).json({ error: 'You can add a maximum of 2 accounts.' });
+    const maxAccounts = type === 'USDT' ? 1 : 2;
+    if (existing && existing.length >= maxAccounts) {
+      return res.status(400).json({
+        error: type === 'USDT'
+          ? 'You can only add 1 Binance account.'
+          : 'You can add a maximum of 2 accounts.'
+      });
     }
 
     const newWallet = await db.addUserWallet(userId, {
@@ -240,6 +261,24 @@ router.get('/wallet/list', async (req, res) => {
     res.json({ success: true, wallets });
   } catch (err) {
     console.error('API /wallet/list error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4c. Get Detailed Affiliate & Referral Data
+router.get('/affiliate', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'User ID is required' });
+    const affiliate = await db.getAffiliateData(userId);
+    res.json({
+      success: true,
+      ...affiliate,
+      referralReward: config.referralReward,
+      currency: config.currency
+    });
+  } catch (err) {
+    console.error('API /affiliate error:', err);
     res.status(500).json({ error: err.message });
   }
 });

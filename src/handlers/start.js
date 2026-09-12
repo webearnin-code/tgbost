@@ -15,22 +15,37 @@ async function handleStart(ctx) {
       }
     }
 
-    const { user, isNew, referrerId: validRef } = await db.getOrCreateUser(telegramUser, referrerId);
+    const { user, isNew, referrerId: validRef, qualifiedReferral } = await db.getOrCreateUser(telegramUser, referrerId);
 
-    // If new user registered with referral, reward the referrer
-    if (isNew && validRef && config.referralReward > 0) {
+    // Notify referrer that a new pending member joined
+    if (isNew && validRef) {
       try {
-        await db.addBalance(validRef, config.referralReward, true);
-        const refName = telegramUser.first_name || 'New Member';
+        const refName = telegramUser.first_name || telegramUser.username || 'New Member';
         await ctx.telegram.sendMessage(
           validRef,
-          `<b>New Referral Reward!</b>\n\n` +
-          `User: <b>${refName}</b> joined through your referral link.\n` +
-          `You earned: <b>+${config.referralReward.toFixed(2)} ${config.currency}</b>`,
+          `👥 <b>New Referral Joined!</b>\n\n` +
+          `User: <b>${refName}</b> joined using your referral link.\n` +
+          `Status: <b>⏳ Pending</b>\n` +
+          `Once this member refers at least 1 friend, your <b>+${config.referralReward.toFixed(2)} ${config.currency}</b> reward will be credited!`,
           { parse_mode: 'HTML' }
         );
       } catch (err) {
         console.error('Error sending referral notification to referrer:', err.message);
+      }
+    }
+
+    // If a referral just qualified (i.e. User B just referred this new user and qualified User A)
+    if (qualifiedReferral) {
+      try {
+        await ctx.telegram.sendMessage(
+          qualifiedReferral.rewardedUserId,
+          `🎉 <b>Referral Bonus Activated!</b>\n\n` +
+          `Your invited member <b>${qualifiedReferral.qualifiedUser.first_name || qualifiedReferral.qualifiedUser.username || 'Member'}</b> referred a new user and is now Active!\n` +
+          `You earned: <b>+${qualifiedReferral.rewardAmount.toFixed(2)} ${config.currency}</b> (credited to your main balance)`,
+          { parse_mode: 'HTML' }
+        );
+      } catch (err) {
+        console.error('Error sending referral activation notification:', err.message);
       }
     }
 

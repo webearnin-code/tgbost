@@ -88,7 +88,7 @@ class DatabaseAdapter {
       );
     `);
 
-    // Migrations for saved BDT and USDT wallet accounts (SQLite)
+    // Migrations for saved BDT and USDT wallet accounts & referral tracking (SQLite)
     const walletCols = [
       'bdt_account_1_type',
       'bdt_account_1_number',
@@ -101,6 +101,9 @@ class DatabaseAdapter {
         this.sqliteDb.prepare(`ALTER TABLE users ADD COLUMN ${col} TEXT`).run();
       } catch (e) {}
     }
+    try {
+      this.sqliteDb.prepare('ALTER TABLE users ADD COLUMN is_referral_rewarded INTEGER DEFAULT 0').run();
+    } catch (e) {}
 
     // Dedicated User Wallets Table (Supports bKash, Nagad, Rocket, Binance)
     try {
@@ -218,6 +221,7 @@ class DatabaseAdapter {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS bdt_account_2_type TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS bdt_account_2_number TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS binance_id TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_referral_rewarded INTEGER DEFAULT 0;
     `);
   }
 
@@ -424,19 +428,44 @@ class DatabaseAdapter {
       }
 
       res = await this.pgPool.query(
-        `INSERT INTO users (id, username, first_name, last_name, referred_by)
-         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        `INSERT INTO users (id, username, first_name, last_name, referred_by, is_referral_rewarded)
+         VALUES ($1, $2, $3, $4, $5, 0) RETURNING *`,
         [userId, username, firstName, lastName, validReferrer]
       );
+
+      let qualifiedReferral = null;
 
       if (validReferrer) {
         await this.pgPool.query(
           'UPDATE users SET referral_count = referral_count + 1 WHERE id = $1',
           [validReferrer]
         );
+
+        // Check if the referrer (User B) now qualifies to reward THEIR referrer (User A)
+        // Rule: User A receives 1.00 ৳ when User B refers at least 1 person
+        const refUserRes = await this.pgPool.query(
+          'SELECT id, first_name, username, referred_by, referral_count, is_referral_rewarded FROM users WHERE id = $1',
+          [validReferrer]
+        );
+        const refUser = refUserRes.rows[0];
+        if (
+          refUser &&
+          refUser.referred_by &&
+          parseInt(refUser.is_referral_rewarded || 0, 10) === 0 &&
+          parseInt(refUser.referral_count || 0, 10) >= 1 &&
+          config.referralReward > 0
+        ) {
+          await this.addBalance(refUser.referred_by, config.referralReward, true);
+          await this.pgPool.query('UPDATE users SET is_referral_rewarded = 1 WHERE id = $1', [refUser.id]);
+          qualifiedReferral = {
+            rewardedUserId: refUser.referred_by,
+            qualifiedUser: refUser,
+            rewardAmount: config.referralReward
+          };
+        }
       }
 
-      return { user: res.rows[0], isNew: true, referrerId: validReferrer };
+      return { user: res.rows[0], isNew: true, referrerId: validReferrer, qualifiedReferral };
     } else {
       let user = this.sqliteDb.prepare('SELECT * FROM users WHERE id = ?').get(userId);
       if (user) {
@@ -455,18 +484,99 @@ class DatabaseAdapter {
       }
 
       this.sqliteDb.prepare(
-        `INSERT INTO users (id, username, first_name, last_name, referred_by)
-         VALUES (?, ?, ?, ?, ?)`
+        `INSERT INTO users (id, username, first_name, last_name, referred_by, is_referral_rewarded)
+         VALUES (?, ?, ?, ?, ?, 0)`
       ).run(userId, username, firstName, lastName, validReferrer);
+
+      let qualifiedReferral = null;
 
       if (validReferrer) {
         this.sqliteDb.prepare(
           'UPDATE users SET referral_count = referral_count + 1 WHERE id = ?'
         ).run(validReferrer);
+
+        // Check if the referrer (User B) now qualifies to reward THEIR referrer (User A)
+        // Rule: User A receives 1.00 ৳ when User B refers at least 1 person
+        const refUser = this.sqliteDb.prepare(
+          'SELECT id, first_name, username, referred_by, referral_count, is_referral_rewarded FROM users WHERE id = ?'
+        ).get(validReferrer);
+
+        if (
+          refUser &&
+          refUser.referred_by &&
+          parseInt(refUser.is_referral_rewarded || 0, 10) === 0 &&
+          parseInt(refUser.referral_count || 0, 10) >= 1 &&
+          config.referralReward > 0
+        ) {
+          await this.addBalance(refUser.referred_by, config.referralReward, true);
+          this.sqliteDb.prepare('UPDATE users SET is_referral_rewarded = 1 WHERE id = ?').run(refUser.id);
+          qualifiedReferral = {
+            rewardedUserId: refUser.referred_by,
+            qualifiedUser: refUser,
+            rewardAmount: config.referralReward
+          };
+        }
       }
 
       user = this.sqliteDb.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-      return { user, isNew: true, referrerId: validReferrer };
+      return { user, isNew: true, referrerId: validReferrer, qualifiedReferral };
+    }
+  }
+
+  async getAffiliateData(userId) {
+    const uid = Number(userId);
+    const rewardPerRef = config.referralReward || 1.0;
+    if (this.isPostgres) {
+      const refRes = await this.pgPool.query(
+        `SELECT id, first_name, username, referral_count, is_referral_rewarded, created_at
+         FROM users WHERE referred_by = $1 ORDER BY created_at DESC`,
+        [uid]
+      );
+      const referrals = refRes.rows.map(r => {
+        const refCount = parseInt(r.referral_count || 0, 10);
+        const isRewarded = parseInt(r.is_referral_rewarded || 0, 10) === 1;
+        const isActive = refCount >= 1 || isRewarded;
+        return {
+          id: r.id,
+          name: r.first_name || (r.username ? `@${r.username}` : `User ${r.id}`),
+          username: r.username ? `@${r.username}` : null,
+          joinedAt: r.created_at,
+          referralCount: refCount,
+          isActive,
+          status: isActive ? 'active' : 'pending',
+          rewardEarned: isActive ? rewardPerRef : 0
+        };
+      });
+      const totalInvites = referrals.length;
+      const activeInvites = referrals.filter(r => r.status === 'active').length;
+      const pendingInvites = referrals.filter(r => r.status === 'pending').length;
+      const totalEarned = (activeInvites * rewardPerRef).toFixed(2);
+      return { totalInvites, activeInvites, pendingInvites, totalEarned, referrals };
+    } else {
+      const rows = this.sqliteDb.prepare(
+        `SELECT id, first_name, username, referral_count, is_referral_rewarded, created_at
+         FROM users WHERE referred_by = ? ORDER BY created_at DESC`
+      ).all(uid);
+      const referrals = rows.map(r => {
+        const refCount = parseInt(r.referral_count || 0, 10);
+        const isRewarded = parseInt(r.is_referral_rewarded || 0, 10) === 1;
+        const isActive = refCount >= 1 || isRewarded;
+        return {
+          id: r.id,
+          name: r.first_name || (r.username ? `@${r.username}` : `User ${r.id}`),
+          username: r.username ? `@${r.username}` : null,
+          joinedAt: r.created_at,
+          referralCount: refCount,
+          isActive,
+          status: isActive ? 'active' : 'pending',
+          rewardEarned: isActive ? rewardPerRef : 0
+        };
+      });
+      const totalInvites = referrals.length;
+      const activeInvites = referrals.filter(r => r.status === 'active').length;
+      const pendingInvites = referrals.filter(r => r.status === 'pending').length;
+      const totalEarned = (activeInvites * rewardPerRef).toFixed(2);
+      return { totalInvites, activeInvites, pendingInvites, totalEarned, referrals };
     }
   }
 

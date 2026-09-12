@@ -393,7 +393,7 @@ function renderSavedWalletsUI() {
     if (bdtWallets.length === 0) {
       savedBdtWalletsList.innerHTML = `
         <div style="font-size: 12px; color: var(--text-dim); text-align: center; padding: 12px 0;">
-          No saved BDT accounts yet. Tap below to add your bKash, Nagad, or Rocket account.
+          No saved BDT accounts yet. Tap below to add your bKash or Nagad account.
         </div>
       `;
     } else {
@@ -401,10 +401,14 @@ function renderSavedWalletsUI() {
       bdtWallets.forEach(w => {
         const isSelected = w.id === selectedBdtWalletId;
         const provClass = (w.provider || 'bkash').toLowerCase();
+        const provLogo = provClass === 'nagad' ? '/img/na.png' : '/img/bk.png';
         html += `
           <div class="saved-wallet-card ${isSelected ? 'selected' : ''}" onclick="selectWalletAccount(${w.id}, 'BDT')">
             <div class="wallet-card-left">
-              <span class="provider-badge ${provClass}">${w.provider}</span>
+              <span class="provider-badge ${provClass}">
+                <img src="${provLogo}" alt="${w.provider}" class="provider-badge-img">
+                <span>${w.provider}</span>
+              </span>
               <div class="wallet-card-info">
                 <span class="wallet-masked-number">${maskAccountNumber(w.account_number)}</span>
                 <span class="wallet-provider-sub">${w.provider} Personal Account</span>
@@ -429,7 +433,8 @@ function renderSavedWalletsUI() {
   if (bdtSelectedBanner && bdtSelectedText) {
     const selectedBdt = bdtWallets.find(w => w.id === selectedBdtWalletId);
     if (selectedBdt) {
-      bdtSelectedText.innerHTML = `<span style="color: var(--tg-blue); font-weight: 800;">${selectedBdt.provider}</span> • <span style="font-family: monospace;">${maskAccountNumber(selectedBdt.account_number)}</span>`;
+      const bannerLogo = (selectedBdt.provider || '').toLowerCase() === 'nagad' ? '/img/na.png' : '/img/bk.png';
+      bdtSelectedText.innerHTML = `<span style="display: inline-flex; align-items: center; gap: 5px;"><img src="${bannerLogo}" style="width: 16px; height: 16px; border-radius: 50%; vertical-align: middle;"> <span style="color: var(--tg-blue); font-weight: 800;">${selectedBdt.provider}</span></span> • <span style="font-family: monospace;">${maskAccountNumber(selectedBdt.account_number)}</span>`;
     } else {
       bdtSelectedText.innerHTML = `Please select or add an account above`;
     }
@@ -450,7 +455,10 @@ function renderSavedWalletsUI() {
         html += `
           <div class="saved-wallet-card ${isSelected ? 'selected' : ''}" onclick="selectWalletAccount(${w.id}, 'USDT')">
             <div class="wallet-card-left">
-              <span class="provider-badge binance">Binance</span>
+              <span class="provider-badge binance">
+                <img src="/img/bi.png" alt="Binance" class="provider-badge-img">
+                <span>Binance</span>
+              </span>
               <div class="wallet-card-info">
                 <span class="wallet-masked-number">${maskAccountNumber(w.account_number)}</span>
                 <span class="wallet-provider-sub">Binance UID / Pay ID</span>
@@ -475,7 +483,7 @@ function renderSavedWalletsUI() {
   if (usdtSelectedBanner && usdtSelectedText) {
     const selectedUsdt = usdtWallets.find(w => w.id === selectedUsdtWalletId);
     if (selectedUsdt) {
-      usdtSelectedText.innerHTML = `<span style="color: var(--tg-blue); font-weight: 800;">Binance Pay</span> • <span style="font-family: monospace;">${maskAccountNumber(selectedUsdt.account_number)}</span>`;
+      usdtSelectedText.innerHTML = `<span style="display: inline-flex; align-items: center; gap: 5px;"><img src="/img/bi.png" style="width: 16px; height: 16px; border-radius: 50%; vertical-align: middle;"> <span style="color: var(--tg-blue); font-weight: 800;">Binance Pay</span></span> • <span style="font-family: monospace;">${maskAccountNumber(selectedUsdt.account_number)}</span>`;
     } else {
       usdtSelectedText.innerHTML = `Please select or add a Binance ID above`;
     }

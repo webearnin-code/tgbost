@@ -673,10 +673,17 @@ p, span, label, div, strong, b, li {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+}
+
+.provider-badge-img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .provider-badge.bkash {
@@ -909,9 +916,11 @@ p, span, label, div, strong, b, li {
 }
 
 .provider-pill-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
   margin-top: 6px;
 }
 
@@ -919,16 +928,16 @@ p, span, label, div, strong, b, li {
   background: var(--bg-input) !important;
   border: 1.5px solid var(--border-glass) !important;
   border-radius: var(--radius-btn);
-  padding: 10px 8px;
-  font-size: 12px;
+  padding: 8px 16px;
+  font-size: 13px;
   font-weight: 800;
   color: var(--text-main) !important;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
+  gap: 8px;
   transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .provider-select-pill:hover {
@@ -941,6 +950,14 @@ p, span, label, div, strong, b, li {
   color: var(--tg-blue) !important;
 }
 
+.pill-logo-img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 .prov-dot {
   width: 8px;
   height: 8px;
@@ -950,7 +967,6 @@ p, span, label, div, strong, b, li {
 
 .prov-dot.bkash { background: #e2136e; }
 .prov-dot.nagad { background: #f7941d; }
-.prov-dot.rocket { background: #8c3494; }
 .prov-dot.binance { background: #f0b90b; }
 
 .field-hint {

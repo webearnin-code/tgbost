@@ -186,10 +186,10 @@ router.post('/wallet/add', async (req, res) => {
     const cleanNum = String(accountNumber).trim();
 
     if (type === 'BDT') {
-      const allowed = ['bKash', 'Nagad', 'Rocket'];
+      const allowed = ['bKash', 'Nagad'];
       const match = allowed.find(p => p.toLowerCase() === normProvider.toLowerCase());
       if (!match) {
-        return res.status(400).json({ error: 'Please select bKash, Nagad, or Rocket.' });
+        return res.status(400).json({ error: 'Please select bKash or Nagad.' });
       }
       normProvider = match;
 

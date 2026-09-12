@@ -1,0 +1,89 @@
+const db = require('../database/db');
+const config = require('../config');
+const { getMainKeyboard, getMiniAppButton } = require('../keyboards/mainKeyboard');
+
+async function handleStart(ctx) {
+  try {
+    const telegramUser = ctx.from;
+    const startPayload = ctx.message && ctx.message.text ? ctx.message.text.split(' ')[1] : null;
+
+    let referrerId = null;
+    if (startPayload && startPayload.startsWith('ref_')) {
+      const parsedId = startPayload.replace('ref_', '').trim();
+      if (/^\d+$/.test(parsedId)) {
+        referrerId = parsedId;
+      }
+    }
+
+    const { user, isNew, referrerId: validRef } = await db.getOrCreateUser(telegramUser, referrerId);
+
+    // If new user registered with referral, reward the referrer
+    if (isNew && validRef && config.referralReward > 0) {
+      try {
+        await db.addBalance(validRef, config.referralReward, true);
+        const refName = telegramUser.first_name || 'New Member';
+        await ctx.telegram.sendMessage(
+          validRef,
+          `<b>New Referral Reward!</b>\n\n` +
+          `User: <b>${refName}</b> joined through your referral link.\n` +
+          `You earned: <b>+${config.referralReward.toFixed(2)} ${config.currency}</b>`,
+          { parse_mode: 'HTML' }
+        );
+      } catch (err) {
+        console.error('Error sending referral notification to referrer:', err.message);
+      }
+    }
+
+    const firstName = telegramUser.first_name || 'Member';
+    const welcomeMsg =
+      `<b>Welcome, ${firstName}!</b>\n\n` +
+      `Welcome to <b>TG BOOST</b> - your platform to earn rewards by joining verified Telegram channels and groups.\n\n` +
+      `<b>How it works:</b>\n` +
+      `1. Tap <b>"Available Tasks"</b> to view active channels.\n` +
+      `2. Click the link to join the required channel or group.\n` +
+      `3. Return here and tap <b>"Verify"</b> to claim your reward.\n` +
+      `4. Withdraw your earnings via BDT (bKash/Nagad) or USDT (Binance ID).\n\n` +
+      `Use the buttons below to get started:`;
+
+    const webAppUrl = config.webhookDomain ? config.webhookDomain : null;
+    const inlineKb = getMiniAppButton(webAppUrl);
+
+    // Set Telegram bottom-left Chat Menu Button to "Open"
+    if (webAppUrl) {
+      try {
+        await ctx.telegram.callApi('setChatMenuButton', {
+          chat_id: ctx.chat.id,
+          menu_button: {
+            type: 'web_app',
+            text: 'Open',
+            web_app: { url: webAppUrl }
+          }
+        });
+      } catch (e) {}
+    }
+
+    await ctx.reply(welcomeMsg, {
+      parse_mode: 'HTML',
+      ...getMainKeyboard(telegramUser, webAppUrl)
+    });
+
+    // Send Mini App launcher card if URL is configured
+    if (webAppUrl) {
+      await ctx.reply(
+        `<b>Mini App Experience:</b>\n\n` +
+        `Open the Mini App for visual task verification, wallet management, and fast withdrawals.`,
+        {
+          parse_mode: 'HTML',
+          ...inlineKb
+        }
+      );
+    }
+  } catch (error) {
+    console.error('Error in handleStart:', error);
+    await ctx.reply('Something went wrong. Please try again shortly.');
+  }
+}
+
+module.exports = {
+  handleStart
+};

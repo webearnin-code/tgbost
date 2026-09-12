@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" class="dark-theme">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TG BOOST - Telegram Tasks and Rewards</title>
+  
+  <!-- Modern Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Telegram Web App SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- Pre-render theme synchronization with Telegram -->
+  <script>
+    (function() {
+      try {
+        const tg = window.Telegram?.WebApp;
+        let isDark = true;
+        if (tg && tg.colorScheme) {
+          isDark = tg.colorScheme === 'dark';
+        } else {
+          const saved = localStorage.getItem('tg_app_theme');
+          if (saved) {
+            isDark = saved === 'dark';
+          } else if (window.matchMedia) {
+            isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          }
+        }
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        document.documentElement.className = isDark ? 'dark-theme' : 'light-theme';
+      } catch (e) {}
+    })();
+  </script>
+
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="dark-theme" data-theme="dark">
+  <div id="app">
+    <!-- Floating Toast Notification -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- ================= TAB 1: HOME (DEFAULT VIEW) ================= -->
+    <section id="homeTab" class="tab-content active">
+      <!-- User Profile Header Card (100% Symmetrical, Automatic Telegram Theme) -->
+      <div class="home-profile-card">
+        <div class="home-user-info">
+          <div class="user-avatar-box">
+            <img id="userAvatarImg" class="user-avatar-img" src="" alt="Avatar" style="display: none;">
+            <div id="userAvatarFallback" class="user-avatar-fallback">M</div>
+            <div class="online-dot"></div>
+          </div>
+          <div class="user-text-details">
+            <div class="user-display-name">
+              <span id="userDisplayName">Member</span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="var(--tg-blue)" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+              <span id="homeAdminBadge" class="admin-tag" style="display: none;">ADMIN</span>
+            </div>
+            <div class="user-username-tag" id="userUsernameTag">@username</div>
+            <div class="user-id-chip" id="copyIdChip" title="Click to copy ID">
+              <span>ID: <strong id="userIdDisplay">---</strong></span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            </div>
+          </div>
+        </div>
+        <div class="profile-status-badge">
+          <span class="status-indicator-dot"></span>
+          <span>Active</span>
+        </div>
+      </div>
+
+      <!-- Rectangular Hero Balance Card -->
+      <div class="balance-card">
+        <div class="balance-card-top">
+          <span class="balance-title">Available Balance</span>
+          <div class="live-badge">
+            <span>●</span>
+            <span>LIVE</span>
+          </div>
+        </div>
+        <div class="balance-amount-row">
+          <div style="display: flex; align-items: baseline; gap: 4px;">
+            <span id="balanceValue">0.00</span>
+            <span class="currency-label">৳</span>
+          </div>
+          <span style="font-size: 13px; font-weight: 600; color: var(--text-dim);" id="homeUsdtEq">≈ $0.00 USDT</span>
+        </div>
+        
+        <!-- 4-Stat Grid -->
+        <div class="stats-grid-4">
+          <div class="stat-box">
+            <div class="stat-box-label">Total Earned</div>
+            <div class="stat-box-value"><span id="totalEarnedValue">0.00</span> ৳</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-label">Completed Tasks</div>
+            <div class="stat-box-value"><span id="completedTasksCount">0</span> Done</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-label">Total Referrals</div>
+            <div class="stat-box-value"><span id="homeRefCount">0</span> Members</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-label">Affiliate Income</div>
+            <div class="stat-box-value"><span id="homeRefEarnings">0.00</span> ৳</div>
+          </div>
+        </div>
+
+        <div class="card-action-btns">
+          <button class="btn-blue" id="homeWithdrawBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+            Cashout Funds
+          </button>
+          <button class="btn-outline" id="homeTasksBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            Tasks Feed
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Affiliate Banner on Home -->
+      <div class="content-card">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <div style="font-size: 13px; font-weight: 700; color: var(--text-main);">Affiliate Overview</div>
+          <span class="badge-tag">+1.00 ৳ / Invite</span>
+        </div>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
+          Invite your friends to TG BOOST and earn instant +1.00 ৳ cash bonus for every successful referral.
+        </p>
+        <button class="btn-outline" id="homeGoAffiliateBtn" style="width: 100%;">
+          View Affiliate Program and Invite Link →
+        </button>
+      </div>
+
+      <!-- Recent Activity & History on Home -->
+      <div class="content-card">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+          <div style="font-size: 13px; font-weight: 700; color: var(--text-main);">Recent Activity and History</div>
+          <span class="badge-tag">Recent</span>
+        </div>
+        <div id="homeRecentActivityList">
+          <div class="empty-box" style="padding: 16px 10px;">
+            <div class="empty-box-sub">No recent activity yet. Complete tasks or invite friends to start earning.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Platform Guidelines on Home -->
+      <div class="content-card" style="font-size: 12px; line-height: 1.6; color: var(--text-muted);">
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">Platform Guidelines</div>
+        <p>• Join active channels under the <b>Tasks</b> tab and tap <b>Verify</b> for immediate payouts.</p>
+        <p>• Leaving channels after receiving payment is prohibited and will freeze your account balance.</p>
+        <p>• Minimum cashout threshold: <b>20 ৳</b> via bKash / Nagad / Rocket, or <b>$1.00 USDT</b> via Binance ID.</p>
+      </div>
+    </section>
+
+    <!-- ================= TAB 2: TASKS ================= -->
+    <section id="tasksTab" class="tab-content">
+      <div class="section-header">
+        <h2 class="section-title">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+            <path d="M21.5 3.5L2 11.5L9.5 14.5L12 21.5L15.5 17L19.5 20L21.5 3.5Z" fill="var(--tg-blue)"/>
+            <path d="M9.5 14.5L21.5 3.5L12 16.5" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Available Channel Tasks
+        </h2>
+        <span class="badge-tag" id="tasksCountBadge">0</span>
+      </div>
+
+      <div class="tasks-container" id="tasksList">
+        <div class="empty-box">
+          <div class="empty-box-title">Loading Tasks...</div>
+          <div class="empty-box-sub">Checking available channels</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= TAB 3: WALLET / CASHOUT ================= -->
+    <section id="walletTab" class="tab-content">
+      <div class="section-header">
+        <h2 class="section-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+          Cashout Funds
+        </h2>
+      </div>
+
+      <!-- Wallet Type Switcher (BDT Wallet vs USDT Wallet) -->
+      <div class="content-card" style="padding: 6px; margin-bottom: 12px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+          <button type="button" class="btn-outline active-wallet-type" id="tabBdtWalletBtn" style="padding: 8px 10px; font-size: 12px; font-weight: 700;">
+            BDT Wallet (৳)
+          </button>
+          <button type="button" class="btn-outline" id="tabUsdtWalletBtn" style="padding: 8px 10px; font-size: 12px; font-weight: 700;">
+            USDT Wallet ($)
+          </button>
+        </div>
+      </div>
+
+      <!-- ===== SECTION A: BDT WALLET ===== -->
+      <div id="bdtWalletSection">
+        <!-- Saved BDT Accounts Container -->
+        <div class="section-header" style="margin-top: 4px;">
+          <h3 class="section-title" style="font-size: 13px;">Saved BDT Accounts</h3>
+          <span class="badge-tag" id="bdtSavedCountBadge">0 Saved</span>
+        </div>
+
+        <div id="savedBdtWalletsList" class="saved-wallets-grid">
+          <!-- Dynamic Saved Cards with Masked Numbers & Circular Radios -->
+        </div>
+
+        <!-- Full-Width Horizontal "+ Add Account" Card -->
+        <div class="add-wallet-trigger-card" id="openAddBdtModalBtn">
+          <div class="add-card-icon-box">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </div>
+          <div class="add-card-info">
+            <div class="add-card-title">Add Withdrawal Account</div>
+            <div class="add-card-sub">bKash, Nagad, or Rocket</div>
+          </div>
+          <div class="add-card-arrow">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+        </div>
+
+        <!-- BDT Cashout Submission Card -->
+        <div class="content-card" style="margin-top: 12px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+            <div style="font-size: 13px; font-weight: 700; color: var(--text-main);">Cashout to Selected Account</div>
+            <span class="badge-tag">Min 20 ৳</span>
+          </div>
+
+          <div class="selected-account-banner" id="bdtSelectedBanner">
+            <div style="font-size: 11px; color: var(--text-dim); font-weight: 600;">Destination Account:</div>
+            <div style="font-size: 13px; font-weight: 800; color: var(--text-main); margin-top: 2px;" id="bdtSelectedText">
+              Please select or add an account above
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 12px;">
+            <label class="form-label" for="bdtAmountInput">Withdrawal Amount (BDT ৳):</label>
+            <input type="number" id="bdtAmountInput" class="rect-input" placeholder="Minimum 20 ৳">
+            <div class="chip-row">
+              <span class="chip-btn" data-amt="20">20 ৳</span>
+              <span class="chip-btn" data-amt="50">50 ৳</span>
+              <span class="chip-btn" data-amt="100">100 ৳</span>
+              <span class="chip-btn" id="bdtMaxChip">Max Balance</span>
+            </div>
+          </div>
+
+          <button class="btn-blue" id="submitBdtWithdrawBtn" style="width: 100%; margin-top: 6px;">
+            Submit BDT Cashout
+          </button>
+        </div>
+      </div>
+
+      <!-- ===== SECTION B: USDT WALLET ===== -->
+      <div id="usdtWalletSection" style="display: none;">
+        <div class="section-header" style="margin-top: 4px;">
+          <h3 class="section-title" style="font-size: 13px;">Saved Binance / USDT Accounts</h3>
+          <span class="badge-tag" id="usdtSavedCountBadge">0 Saved</span>
+        </div>
+
+        <div id="savedUsdtWalletsList" class="saved-wallets-grid">
+          <!-- Dynamic Saved USDT Cards with Masked Numbers & Circular Radios -->
+        </div>
+
+        <!-- Full-Width Horizontal "+ Add USDT Account" Card -->
+        <div class="add-wallet-trigger-card" id="openAddUsdtModalBtn">
+          <div class="add-card-icon-box">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </div>
+          <div class="add-card-info">
+            <div class="add-card-title">Add Binance ID / Pay ID</div>
+            <div class="add-card-sub">Instant USDT Payouts</div>
+          </div>
+          <div class="add-card-arrow">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+        </div>
+
+        <!-- USDT Cashout Submission Card -->
+        <div class="content-card" style="margin-top: 12px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <div style="font-size: 13px; font-weight: 700; color: var(--text-main);">Cashout via Binance Pay (USDT)</div>
+            <span class="badge-tag">Min $1.00 USD</span>
+          </div>
+
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+            Exchange Rate: <b>1 USDT = <span id="usdtRateDisplay">120.00</span> ৳</b>. Minimum cashout is <b>$1.00 USDT</b>.
+          </p>
+
+          <div class="selected-account-banner" id="usdtSelectedBanner">
+            <div style="font-size: 11px; color: var(--text-dim); font-weight: 600;">Destination Binance ID:</div>
+            <div style="font-size: 13px; font-weight: 800; color: var(--text-main); margin-top: 2px;" id="usdtSelectedText">
+              Please select or add a Binance ID above
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 12px;">
+            <label class="form-label" for="usdtAmountInput">Withdrawal Amount in USDT ($):</label>
+            <input type="number" step="0.5" id="usdtAmountInput" class="rect-input" placeholder="e.g. 1.00 (Minimum $1.00)">
+            <div class="chip-row">
+              <span class="chip-btn" data-usdt="1">1.00 USDT</span>
+              <span class="chip-btn" data-usdt="2">2.00 USDT</span>
+              <span class="chip-btn" data-usdt="5">5.00 USDT</span>
+              <span class="chip-btn" id="usdtMaxChip">Max USDT</span>
+            </div>
+          </div>
+
+          <div style="font-size: 12px; color: var(--text-dim); margin-bottom: 12px;" id="usdtCostPreview">
+            Deducts: <b>0.00 ৳</b> from your BDT wallet balance.
+          </div>
+
+          <button class="btn-blue" id="submitUsdtWithdrawBtn" style="width: 100%;">
+            Submit USDT Cashout
+          </button>
+        </div>
+      </div>
+
+      <!-- Withdrawal History -->
+      <div class="section-header">
+        <h2 class="section-title">Withdrawal Transactions</h2>
+      </div>
+      <div id="withdrawHistoryList">
+        <div class="empty-box">
+          <div class="empty-box-title">No Transactions Yet</div>
+          <div class="empty-box-sub">Your cashout requests will appear here</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= TAB 4: AFFILIATE ================= -->
+    <section id="affiliateTab" class="tab-content">
+      <div class="content-card" style="text-align: center;">
+        <span class="badge-tag" style="margin-bottom: 8px;">Referral Program</span>
+        <h2 style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Invite Friends and Earn</h2>
+        <p style="font-size: 12px; color: var(--text-muted);">
+          Earn instant <b style="color: var(--tg-blue);">+1.00 ৳</b> reward for every friend who joins via your link.
+        </p>
+
+        <div class="link-copy-container">
+          <input type="text" id="referralLinkInput" class="link-text-field" readonly value="Loading link...">
+          <button class="link-copy-button" id="copyRefBtn">Copy</button>
+        </div>
+
+        <button class="btn-blue" id="shareTelegramBtn" style="width: 100%;">
+          Share on Telegram
+        </button>
+      </div>
+
+      <div class="stats-grid-2">
+        <div class="stat-box">
+          <div class="stat-box-label">Successful Invites</div>
+          <div class="stat-box-value"><span id="refCountDisplay">0</span> Members</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-label">Total Affiliate Income</div>
+          <div class="stat-box-value"><span id="refEarningsDisplay">0.00</span> ৳</div>
+        </div>
+      </div>
+
+      <div class="content-card" style="font-size: 12px; line-height: 1.6; color: var(--text-muted);">
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">How It Works</div>
+        <p>1. Copy your personal referral link above and share it with friends.</p>
+        <p>2. When your friend launches the bot and starts earning, you instantly get <b>+1.00 ৳</b> credited to your balance.</p>
+        <p>3. There is no limit on referrals. The more members you invite, the more you earn.</p>
+      </div>
+    </section>
+
+    <!-- ================= TAB 5: ADMIN DASHBOARD (STRICTLY ADMIN ONLY) ================= -->
+    <section id="adminTab" class="tab-content">
+      <div class="section-header">
+        <h2 class="section-title">Administrator Dashboard</h2>
+      </div>
+
+      <!-- Admin Stats Grid -->
+      <div class="stats-grid-2" style="margin-bottom: 12px;">
+        <div class="stat-box">
+          <div class="stat-box-label">Total Users</div>
+          <div class="stat-box-value" id="adminTotalUsers">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-label">Active Tasks</div>
+          <div class="stat-box-value" id="adminTotalTasks">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-label">Total Paid Out</div>
+          <div class="stat-box-value" id="adminTotalPaid">0.00 ৳</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-label">Pending Cashouts</div>
+          <div class="stat-box-value" id="adminPendingCount" style="color: var(--accent-amber);">0</div>
+        </div>
+      </div>
+
+      <!-- Create Task Form -->
+      <div class="content-card">
+        <div style="font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 10px;">Add New Channel Task</div>
+        
+        <div class="form-group">
+          <label class="form-label">Task Title:</label>
+          <input type="text" id="adminTaskTitle" class="rect-input" placeholder="e.g. Official News Channel">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Channel Username / ID (Bot must be Admin):</label>
+          <input type="text" id="adminTaskChannelId" class="rect-input" placeholder="@my_channel or -1001234567890">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Channel Join Link:</label>
+          <input type="url" id="adminTaskLink" class="rect-input" placeholder="https://t.me/my_channel">
+        </div>
+
+        <div class="stats-grid-2" style="margin-bottom: 0;">
+          <div class="form-group">
+            <label class="form-label">Reward Amount (৳):</label>
+            <input type="number" step="0.5" id="adminTaskReward" class="rect-input" placeholder="2.50">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Member Limit (0 = Unlimited):</label>
+            <input type="number" id="adminTaskMaxUsers" class="rect-input" placeholder="0" value="0">
+          </div>
+        </div>
+
+        <button class="btn-blue" id="adminCreateTaskBtn" style="width: 100%; margin-top: 6px;">
+          Publish Task
+        </button>
+      </div>
+
+      <!-- Pending Cashouts Queue -->
+      <div class="section-header">
+        <h2 class="section-title">Pending Cashouts Queue</h2>
+      </div>
+      <div id="adminWithdrawalsList" style="margin-bottom: 14px;">
+        <div class="empty-box">
+          <div class="empty-box-title">No Pending Requests</div>
+        </div>
+      </div>
+
+      <!-- Existing Tasks Management -->
+      <div class="section-header">
+        <h2 class="section-title">Manage Active Tasks</h2>
+      </div>
+      <div id="adminTasksList">
+        <!-- Dynamic list -->
+      </div>
+    </section>
+
+    <!-- ================= ADD WALLET ACCOUNT MODAL / BOTTOM SHEET ================= -->
+    <div id="addWalletModalBackdrop" class="modal-backdrop" style="display: none;">
+      <div class="modal-card" id="addWalletModal">
+        <div class="modal-header">
+          <div class="modal-title" id="modalWalletTitle">Add Withdrawal Account</div>
+          <button type="button" class="modal-close-btn" id="closeAddWalletModalBtn">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <!-- Provider Selection for BDT -->
+          <div id="bdtProviderSelectSection">
+            <label class="form-label">Select Wallet Provider:</label>
+            <div class="provider-pill-grid">
+              <button type="button" class="provider-select-pill active" data-provider="bKash">
+                <span class="prov-dot bkash"></span>
+                <span>bKash</span>
+              </button>
+              <button type="button" class="provider-select-pill" data-provider="Nagad">
+                <span class="prov-dot nagad"></span>
+                <span>Nagad</span>
+              </button>
+              <button type="button" class="provider-select-pill" data-provider="Rocket">
+                <span class="prov-dot rocket"></span>
+                <span>Rocket</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Provider for USDT (Binance Pay) -->
+          <div id="usdtProviderSelectSection" style="display: none;">
+            <label class="form-label">Destination Platform:</label>
+            <div class="provider-pill-grid">
+              <button type="button" class="provider-select-pill active" data-provider="Binance Pay" style="grid-column: span 3;">
+                <span class="prov-dot binance"></span>
+                <span>Binance Pay (UID / Pay ID)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Account Number Input -->
+          <div class="form-group" style="margin-top: 14px;">
+            <label class="form-label" id="newWalletInputLabel">Account Number (11 Digits):</label>
+            <input type="tel" id="newWalletNumberInput" class="rect-input" placeholder="01XXXXXXXXX" maxlength="11">
+            <div class="field-hint" id="newWalletHint">Enter your full 11-digit mobile number starting with 0.</div>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="button" class="btn-blue" id="submitAddWalletBtn" style="width: 100%; margin-top: 14px;">
+            Save Account
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= COMPACT RECTANGULAR BOTTOM NAVIGATION ================= -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-tab="homeTab">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        <span class="nav-label">Home</span>
+      </button>
+      <button class="nav-item" data-tab="tasksTab">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+        <span class="nav-label">Tasks</span>
+      </button>
+      <button class="nav-item" data-tab="walletTab">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+        <span class="nav-label">Wallet</span>
+      </button>
+      <button class="nav-item" data-tab="affiliateTab">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <span class="nav-label">Affiliate</span>
+      </button>
+      <!-- ONLY VISIBLE TO ADMIN -->
+      <button class="nav-item" id="adminNavBtn" data-tab="adminTab" style="display: none;">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+        <span class="nav-label">Admin</span>
+      </button>
+    </nav>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

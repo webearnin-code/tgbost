@@ -388,6 +388,14 @@ function renderSavedWalletsUI() {
     selectedUsdtWalletId = usdtWallets.length > 0 ? usdtWallets[0].id : null;
   }
 
+  // Hide Add Account button when 2 accounts are saved
+  if (openAddBdtModalBtn) {
+    openAddBdtModalBtn.style.display = bdtWallets.length >= 2 ? 'none' : 'flex';
+  }
+  if (openAddUsdtModalBtn) {
+    openAddUsdtModalBtn.style.display = usdtWallets.length >= 2 ? 'none' : 'flex';
+  }
+
   // Render BDT List
   if (savedBdtWalletsList) {
     if (bdtWallets.length === 0) {
@@ -405,10 +413,10 @@ function renderSavedWalletsUI() {
         html += `
           <div class="saved-wallet-card ${isSelected ? 'selected' : ''}" onclick="selectWalletAccount(${w.id}, 'BDT')">
             <div class="wallet-card-left">
-              <span class="provider-badge ${provClass}">
+              <div class="provider-badge ${provClass}">
                 <img src="${provLogo}" alt="${w.provider}" class="provider-badge-img">
-                <span>${w.provider}</span>
-              </span>
+                <span class="provider-badge-text">${w.provider}</span>
+              </div>
               <div class="wallet-card-info">
                 <span class="wallet-masked-number">${maskAccountNumber(w.account_number)}</span>
                 <span class="wallet-provider-sub">${w.provider} Personal Account</span>
@@ -418,9 +426,6 @@ function renderSavedWalletsUI() {
               <div class="custom-radio-circle">
                 <div class="radio-inner-dot"></div>
               </div>
-              <button type="button" class="wallet-delete-btn" onclick="deleteWalletAccount(event, ${w.id})" title="Remove account">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-              </button>
             </div>
           </div>
         `;
@@ -433,8 +438,20 @@ function renderSavedWalletsUI() {
   if (bdtSelectedBanner && bdtSelectedText) {
     const selectedBdt = bdtWallets.find(w => w.id === selectedBdtWalletId);
     if (selectedBdt) {
-      const bannerLogo = (selectedBdt.provider || '').toLowerCase() === 'nagad' ? '/img/na.png' : '/img/bk.png';
-      bdtSelectedText.innerHTML = `<span style="display: inline-flex; align-items: center; gap: 5px;"><img src="${bannerLogo}" style="width: 16px; height: 16px; border-radius: 50%; vertical-align: middle;"> <span style="color: var(--tg-blue); font-weight: 800;">${selectedBdt.provider}</span></span> • <span style="font-family: monospace;">${maskAccountNumber(selectedBdt.account_number)}</span>`;
+      const isNagad = (selectedBdt.provider || '').toLowerCase() === 'nagad';
+      const bannerLogo = isNagad ? '/img/na.png' : '/img/bk.png';
+      bdtSelectedText.innerHTML = `
+        <div class="dest-account-card">
+          <div class="dest-logo-col">
+            <img src="${bannerLogo}" alt="${selectedBdt.provider}" class="dest-logo-img">
+            <span class="dest-logo-name" style="color: ${isNagad ? '#f7941d' : '#f02d84'};">${selectedBdt.provider}</span>
+          </div>
+          <div class="dest-info-col">
+            <div class="dest-account-num">${maskAccountNumber(selectedBdt.account_number)}</div>
+            <div class="dest-account-sub">${selectedBdt.provider} Personal Account</div>
+          </div>
+        </div>
+      `;
     } else {
       bdtSelectedText.innerHTML = `Please select or add an account above`;
     }
@@ -455,10 +472,10 @@ function renderSavedWalletsUI() {
         html += `
           <div class="saved-wallet-card ${isSelected ? 'selected' : ''}" onclick="selectWalletAccount(${w.id}, 'USDT')">
             <div class="wallet-card-left">
-              <span class="provider-badge binance">
+              <div class="provider-badge binance">
                 <img src="/img/bi.png" alt="Binance" class="provider-badge-img">
-                <span>Binance</span>
-              </span>
+                <span class="provider-badge-text">Binance</span>
+              </div>
               <div class="wallet-card-info">
                 <span class="wallet-masked-number">${maskAccountNumber(w.account_number)}</span>
                 <span class="wallet-provider-sub">Binance UID / Pay ID</span>
@@ -468,9 +485,6 @@ function renderSavedWalletsUI() {
               <div class="custom-radio-circle">
                 <div class="radio-inner-dot"></div>
               </div>
-              <button type="button" class="wallet-delete-btn" onclick="deleteWalletAccount(event, ${w.id})" title="Remove account">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-              </button>
             </div>
           </div>
         `;
@@ -483,7 +497,18 @@ function renderSavedWalletsUI() {
   if (usdtSelectedBanner && usdtSelectedText) {
     const selectedUsdt = usdtWallets.find(w => w.id === selectedUsdtWalletId);
     if (selectedUsdt) {
-      usdtSelectedText.innerHTML = `<span style="display: inline-flex; align-items: center; gap: 5px;"><img src="/img/bi.png" style="width: 16px; height: 16px; border-radius: 50%; vertical-align: middle;"> <span style="color: var(--tg-blue); font-weight: 800;">Binance Pay</span></span> • <span style="font-family: monospace;">${maskAccountNumber(selectedUsdt.account_number)}</span>`;
+      usdtSelectedText.innerHTML = `
+        <div class="dest-account-card">
+          <div class="dest-logo-col">
+            <img src="/img/bi.png" alt="Binance" class="dest-logo-img">
+            <span class="dest-logo-name" style="color: #f0b90b;">Binance</span>
+          </div>
+          <div class="dest-info-col">
+            <div class="dest-account-num">${maskAccountNumber(selectedUsdt.account_number)}</div>
+            <div class="dest-account-sub">Binance UID / Pay ID</div>
+          </div>
+        </div>
+      `;
     } else {
       usdtSelectedText.innerHTML = `Please select or add a Binance ID above`;
     }
@@ -540,8 +565,10 @@ function openAddWalletModal(type) {
   activeModalWalletType = type;
   triggerHaptic('light');
 
+  const noticeEl = document.getElementById('modalNoticeText');
   if (type === 'BDT') {
     modalWalletTitle.textContent = 'Add Withdrawal Account';
+    if (noticeEl) noticeEl.innerHTML = 'Please enter your <b>Personal Account</b> only (Agent or Merchant numbers are not supported).';
     bdtProviderSelectSection.style.display = 'block';
     usdtProviderSelectSection.style.display = 'none';
     newWalletInputLabel.textContent = 'Account Number (11 Digits):';
@@ -552,6 +579,7 @@ function openAddWalletModal(type) {
     selectModalProvider('bKash');
   } else {
     modalWalletTitle.textContent = 'Add Binance Pay / USDT';
+    if (noticeEl) noticeEl.innerHTML = 'Please enter your <b>Personal Binance Pay ID or UID</b> for direct USDT payouts.';
     bdtProviderSelectSection.style.display = 'none';
     usdtProviderSelectSection.style.display = 'block';
     newWalletInputLabel.textContent = 'Binance ID (UID or Binance Pay ID):';

@@ -667,23 +667,31 @@ p, span, label, div, strong, b, li {
 }
 
 .provider-badge {
-  padding: 4px 8px;
-  border-radius: var(--radius-xs);
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 3px;
+  min-width: 56px;
+  flex-shrink: 0;
 }
 
 .provider-badge-img {
-  width: 16px;
-  height: 16px;
+  width: 26px;
+  height: 26px;
   object-fit: contain;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+.provider-badge-text {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1;
 }
 
 .provider-badge.bkash {
@@ -696,12 +704,6 @@ p, span, label, div, strong, b, li {
   background: rgba(247, 148, 29, 0.15) !important;
   color: #f7941d !important;
   border: 1px solid rgba(247, 148, 29, 0.4);
-}
-
-.provider-badge.rocket {
-  background: rgba(140, 52, 148, 0.15) !important;
-  color: #a855f7 !important;
-  border: 1px solid rgba(140, 52, 148, 0.4);
 }
 
 .provider-badge.binance {
@@ -844,13 +846,89 @@ p, span, label, div, strong, b, li {
   color: var(--tg-blue) !important;
 }
 
-/* Selected Account Banner */
+/* Selected Destination Account Banner */
 .selected-account-banner {
   background: var(--bg-input) !important;
   border: 1px solid var(--border-glass) !important;
   border-radius: var(--radius-sm);
-  padding: 10px 12px;
-  margin-top: 4px;
+  padding: 12px 14px;
+  margin-top: 6px;
+}
+
+.dest-account-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.dest-logo-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 52px;
+  padding: 6px 8px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  flex-shrink: 0;
+}
+
+.dest-logo-img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: contain;
+}
+
+.dest-logo-name {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.dest-info-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.dest-account-num {
+  font-size: 15px;
+  font-weight: 800;
+  font-family: monospace, var(--font-sans);
+  color: var(--text-main);
+  letter-spacing: 0.8px;
+}
+
+.dest-account-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+/* Modal Personal Account Notice */
+.modal-notice-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: var(--text-main);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  font-size: 12px;
+  margin-bottom: 14px;
+  line-height: 1.4;
+}
+
+.modal-notice-box svg {
+  color: var(--tg-blue);
+  flex-shrink: 0;
 }
 
 /* ================= MODAL & BOTTOM SHEET ================= */

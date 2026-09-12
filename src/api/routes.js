@@ -206,6 +206,11 @@ router.post('/wallet/add', async (req, res) => {
       return res.status(400).json({ error: 'Invalid wallet type.' });
     }
 
+    const existing = await db.getUserWallets(userId, type);
+    if (existing && existing.length >= 2) {
+      return res.status(400).json({ error: 'You can add a maximum of 2 accounts.' });
+    }
+
     const newWallet = await db.addUserWallet(userId, {
       wallet_type: type,
       provider: normProvider,

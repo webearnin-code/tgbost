@@ -2,7 +2,7 @@ const { Markup } = require('telegraf');
 const config = require('../config');
 
 function getMainKeyboard(userOrId, webAppUrl = null) {
-  const url = webAppUrl || config.webhookDomain;
+  const url = webAppUrl || config.miniAppUrl || config.webhookDomain;
   const buttons = [];
 
   // 'Open App' button in the reply keyboard if URL is configured
@@ -23,7 +23,7 @@ function getMainKeyboard(userOrId, webAppUrl = null) {
 }
 
 function getMiniAppButton(webAppUrl = null) {
-  const url = webAppUrl || config.webhookDomain;
+  const url = webAppUrl || config.miniAppUrl || config.webhookDomain;
   if (url) {
     return Markup.inlineKeyboard([
       [Markup.button.webApp('Open App', url)],

@@ -60,7 +60,7 @@ async function handleStart(ctx) {
       `4. Withdraw your earnings via BDT (bKash/Nagad) or USDT (Binance ID).\n\n` +
       `Use the buttons below to get started:`;
 
-    const webAppUrl = config.webhookDomain ? config.webhookDomain : null;
+    const webAppUrl = config.miniAppUrl || config.webhookDomain || null;
     const inlineKb = getMiniAppButton(webAppUrl);
 
     // Set Telegram bottom-left Chat Menu Button to "Open"

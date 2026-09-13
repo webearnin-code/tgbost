@@ -54,16 +54,17 @@ async function bootstrap() {
     console.log('✅ Telegram bot menu commands registered');
 
     // Set bottom-left "Open" menu button in Telegram chat
-    if (config.webhookDomain) {
+    const appUrl = config.miniAppUrl || config.webhookDomain;
+    if (appUrl) {
       try {
         await bot.telegram.callApi('setChatMenuButton', {
           menu_button: {
             type: 'web_app',
             text: 'Open',
-            web_app: { url: config.webhookDomain }
+            web_app: { url: appUrl }
           }
         });
-        console.log('✅ Telegram Menu Button set to "Open"');
+        console.log(`✅ Telegram Menu Button set to "Open" with URL: ${appUrl}`);
       } catch (btnErr) {
         console.warn('⚠️ Could not set menu button on startup:', btnErr.message);
       }

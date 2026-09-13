@@ -26,7 +26,8 @@ const config = {
   // Database URL (Postgres) or empty for SQLite
   databaseUrl: process.env.DATABASE_URL || '',
 
-  // Webhook settings (for Vercel / Render / Cloudflare / Free Hosting)
+  // Mini App and Webhook settings
+  miniAppUrl: process.env.MINI_APP_URL || process.env.WEBHOOK_DOMAIN || '',
   webhookDomain: process.env.WEBHOOK_DOMAIN || '', // e.g. https://your-app.vercel.app or https://your-app.onrender.com
   port: parseInt(process.env.PORT || '3000', 10),
 

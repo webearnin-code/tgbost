@@ -9,13 +9,14 @@ async function handleShowReferral(ctx) {
     const botUsername = botInfo.username;
 
     const affiliate = await db.getAffiliateData(userId);
-    const refLink = affiliate.referralLink || `https://t.me/${botUsername}?start=${affiliate.referralCode}`;
+    const tgRefLink = affiliate.referralLink || `https://t.me/${botUsername}?start=${affiliate.referralCode}`;
+    const webRefLink = affiliate.webReferralLink || `https://tgbosttgbost.onrender.com/r/${affiliate.referralCode}`;
 
     const shareText = encodeURIComponent(
       `Join Telegram channels and earn daily cash rewards with instant payouts!\n` +
-      `Start earning today on TG BOOST:\n${refLink}`
+      `Start earning today on TG BOOST:\n${webRefLink}`
     );
-    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${shareText}`;
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(webRefLink)}&text=${shareText}`;
 
     const msg =
       `<b>👥 Referral and Affiliate Program:</b>\n\n` +
@@ -26,8 +27,10 @@ async function handleShowReferral(ctx) {
       `• Pending Invites: <b>${affiliate.pendingInvites} members</b>\n` +
       `• Total Affiliate Earnings: <b>${affiliate.totalEarned} ${config.currency}</b>\n\n` +
       `<i>Note: When an invited member refers at least 1 friend, they become Active and your +${config.referralReward.toFixed(2)} ${config.currency} reward is credited!</i>\n\n` +
-      `<b>Your Exclusive Referral Link:</b>\n` +
-      `<code>${refLink}</code>\n\n` +
+      `🌐 <b>Your Clean Web Referral Link:</b>\n` +
+      `<code>${webRefLink}</code>\n\n` +
+      `✈️ <b>Direct Telegram Link:</b>\n` +
+      `<code>${tgRefLink}</code>\n\n` +
       `📢 <b>Want to promote your Channel / Group?</b>\n` +
       `Contact our official agent to get real active Telegram members: @TgBoost_Ajent`;
 

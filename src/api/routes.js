@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 const config = require('../config');
+const { checkUserHoldingTasks } = require('../tasks/verifier');
 
 // Helper to get telegraf bot instance from app
 function getBot(req) {
@@ -54,6 +55,18 @@ router.get('/user', async (req, res) => {
       }
     }
 
+    // Check user's holding tasks on-demand to ensure fresh balances and task unlocking
+    if (bot) {
+      try {
+        await checkUserHoldingTasks(bot, id);
+      } catch (checkErr) {
+        console.warn('User holding tasks check error:', checkErr.message);
+      }
+    }
+
+    // Get fresh user record after potential holding task approvals/revocations
+    const freshUser = (await db.getUser(id)) || user;
+
     const completed = await db.getUserCompletedTasks(id);
     const withdrawals = await db.getUserWithdrawals(id);
     const wallets = await db.getUserWallets(id);
@@ -61,7 +74,7 @@ router.get('/user', async (req, res) => {
     const isAdmin = config.isAdmin({ id, username });
 
     res.json({
-      user,
+      user: freshUser,
       wallets,
       affiliate,
       completedCount: completed.length,
@@ -140,11 +153,30 @@ router.post('/verify-task', async (req, res) => {
       });
     }
 
-    // Complete task
+    // Complete task in holding status (48h holding requirement)
     const result = await db.completeTask(userId, taskId);
+
+    // Notify user in Telegram chat about the 2-day holding rule
+    if (bot) {
+      try {
+        await bot.telegram.sendMessage(
+          userId,
+          `✅ <b>Task Completed!</b>\n\n` +
+          `Task: <b>${task.title}</b>\n` +
+          `Reward: <b>+${parseFloat(result.reward).toFixed(2)} ${config.currency}</b> (Credited to ⏳ <b>Pending Rewards</b>)\n\n` +
+          `📌 <b>Important Rule:</b> Please maintain membership in this channel for <b>2 full days (48 hours)</b>. After 48 hours, the reward will automatically transfer to your <b>Available Balance</b>.\n\n` +
+          `⚠️ <i>Leaving the channel early will automatically cancel the pending reward.</i>`,
+          { parse_mode: 'HTML' }
+        );
+      } catch (notifyErr) {
+        console.warn('Task completion Telegram notify warning:', notifyErr.message);
+      }
+    }
+
     res.json({
       success: true,
-      message: `Task verified! +${parseFloat(result.reward).toFixed(2)} ${config.currency} added to your wallet.`,
+      isHolding: true,
+      message: `Task verified! +${parseFloat(result.reward).toFixed(2)} ${config.currency} added to Pending Rewards. Maintain membership for 2 days to receive Available Balance.`,
       reward: result.reward,
       user: result.updatedUser
     });

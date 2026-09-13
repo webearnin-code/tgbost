@@ -110,6 +110,21 @@ class DatabaseAdapter {
     try {
       this.sqliteDb.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code)').run();
     } catch (e) {}
+    try {
+      this.sqliteDb.prepare('ALTER TABLE users ADD COLUMN pending_balance REAL DEFAULT 0.0').run();
+    } catch (e) {}
+    try {
+      this.sqliteDb.prepare("ALTER TABLE user_tasks ADD COLUMN status TEXT DEFAULT 'holding'").run();
+    } catch (e) {}
+    try {
+      this.sqliteDb.prepare('ALTER TABLE user_tasks ADD COLUMN channel_id TEXT').run();
+    } catch (e) {}
+    try {
+      this.sqliteDb.prepare('ALTER TABLE user_tasks ADD COLUMN unlock_at DATETIME').run();
+    } catch (e) {}
+    try {
+      this.sqliteDb.prepare('ALTER TABLE user_tasks ADD COLUMN approved_at DATETIME').run();
+    } catch (e) {}
 
     // Dedicated User Wallets Table (Supports bKash, Nagad, Rocket, Binance)
     try {
@@ -229,6 +244,11 @@ class DatabaseAdapter {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS binance_id TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_referral_rewarded INTEGER DEFAULT 0;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_balance NUMERIC(10, 2) DEFAULT 0.0;
+      ALTER TABLE user_tasks ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'holding';
+      ALTER TABLE user_tasks ADD COLUMN IF NOT EXISTS channel_id TEXT;
+      ALTER TABLE user_tasks ADD COLUMN IF NOT EXISTS unlock_at TIMESTAMP;
+      ALTER TABLE user_tasks ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP;
     `);
   }
 
@@ -428,7 +448,22 @@ class DatabaseAdapter {
     const byCode = await this.getUserByReferralCode(str);
     if (byCode) return Number(byCode.id);
 
-    // 2. Check if legacy ref_ prefix (e.g. ref_6216116804 or ref_TgBoost_Monetize...)
+    // 2. Check if numeric code part e.g. "823710" -> "TgBoost_Monetize823710"
+    if (/^\d{5,7}$/.test(str)) {
+      const bySuff = await this.getUserByReferralCode(`TgBoost_Monetize${str}`);
+      if (bySuff) return Number(bySuff.id);
+    }
+
+    // 3. Check if TgBoost<number> e.g. TgBoost823710
+    if (str.startsWith('TgBoost')) {
+      const numPart = str.replace(/[^0-9]/g, '');
+      if (numPart) {
+        const byPref = await this.getUserByReferralCode(`TgBoost_Monetize${numPart}`);
+        if (byPref) return Number(byPref.id);
+      }
+    }
+
+    // 4. Check if legacy ref_ prefix (e.g. ref_6216116804 or ref_TgBoost_Monetize...)
     if (str.startsWith('ref_')) {
       const parsed = str.replace('ref_', '').trim();
       if (/^\d+$/.test(parsed)) return Number(parsed);
@@ -436,8 +471,8 @@ class DatabaseAdapter {
       if (bySub) return Number(bySub.id);
     }
 
-    // 3. Check if raw numeric ID (legacy fallback)
-    if (/^\d+$/.test(str)) {
+    // 5. Check if raw numeric Telegram ID (legacy fallback)
+    if (/^\d{8,12}$/.test(str)) {
       return Number(str);
     }
 
@@ -596,7 +631,9 @@ class DatabaseAdapter {
       }
 
       user = this.sqliteDb.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+      const webBase = (config.miniAppUrl || 'https://tgbosttgbost.onrender.com').replace(/\/$/, '');
       user.referral_link = `https://t.me/TgBoost_Monetizebot?start=${user.referral_code}`;
+      user.web_referral_link = `${webBase}/r/${user.referral_code}`;
       return { user, isNew: true, referrerId: validReferrer, qualifiedReferral };
     }
   }
@@ -604,6 +641,8 @@ class DatabaseAdapter {
   async getAffiliateData(userId) {
     const uid = Number(userId);
     const rewardPerRef = config.referralReward || 1.0;
+    const webBase = (config.miniAppUrl || 'https://tgbosttgbost.onrender.com').replace(/\/$/, '');
+
     if (this.isPostgres) {
       const refRes = await this.pgPool.query(
         `SELECT id, first_name, username, referral_count, is_referral_rewarded, created_at
@@ -632,7 +671,8 @@ class DatabaseAdapter {
       const user = await this.getUser(uid);
       const referralCode = user ? user.referral_code : `TgBoost_Monetize${uid}`;
       const referralLink = `https://t.me/TgBoost_Monetizebot?start=${referralCode}`;
-      return { totalInvites, activeInvites, pendingInvites, totalEarned, referrals, referralCode, referralLink };
+      const webReferralLink = `${webBase}/r/${referralCode}`;
+      return { totalInvites, activeInvites, pendingInvites, totalEarned, referrals, referralCode, referralLink, webReferralLink };
     } else {
       const rows = this.sqliteDb.prepare(
         `SELECT id, first_name, username, referral_count, is_referral_rewarded, created_at
@@ -660,7 +700,8 @@ class DatabaseAdapter {
       const user = await this.getUser(uid);
       const referralCode = user ? user.referral_code : `TgBoost_Monetize${uid}`;
       const referralLink = `https://t.me/TgBoost_Monetizebot?start=${referralCode}`;
-      return { totalInvites, activeInvites, pendingInvites, totalEarned, referrals, referralCode, referralLink };
+      const webReferralLink = `${webBase}/r/${referralCode}`;
+      return { totalInvites, activeInvites, pendingInvites, totalEarned, referrals, referralCode, referralLink, webReferralLink };
     }
   }
 
@@ -743,7 +784,7 @@ class DatabaseAdapter {
         WHERE t.is_active = 1
         AND (t.max_users = 0 OR t.completed_count < t.max_users)
         AND t.id NOT IN (
-          SELECT task_id FROM user_tasks WHERE user_id = $1
+          SELECT task_id FROM user_tasks WHERE user_id = $1 AND status IN ('holding', 'approved')
         )
         ORDER BY t.id DESC
       `;
@@ -755,7 +796,7 @@ class DatabaseAdapter {
         WHERE t.is_active = 1
         AND (t.max_users = 0 OR t.completed_count < t.max_users)
         AND t.id NOT IN (
-          SELECT task_id FROM user_tasks WHERE user_id = ?
+          SELECT task_id FROM user_tasks WHERE user_id = ? AND status IN ('holding', 'approved')
         )
         ORDER BY t.id DESC
       `;
@@ -822,10 +863,9 @@ class DatabaseAdapter {
   async deleteTask(taskId) {
     const tid = Number(taskId);
     if (this.isPostgres) {
-      await this.pgPool.query('DELETE FROM user_tasks WHERE task_id = $1', [tid]);
+      // Retain user_tasks records so users in 2-day holding still receive rewards after task deletion!
       await this.pgPool.query('DELETE FROM tasks WHERE id = $1', [tid]);
     } else {
-      this.sqliteDb.prepare('DELETE FROM user_tasks WHERE task_id = ?').run(tid);
       this.sqliteDb.prepare('DELETE FROM tasks WHERE id = ?').run(tid);
     }
     return true;
@@ -836,13 +876,13 @@ class DatabaseAdapter {
     const tid = Number(taskId);
     if (this.isPostgres) {
       const res = await this.pgPool.query(
-        'SELECT id FROM user_tasks WHERE user_id = $1 AND task_id = $2',
+        "SELECT id, status FROM user_tasks WHERE user_id = $1 AND task_id = $2 AND status IN ('holding', 'approved')",
         [uid, tid]
       );
       return res.rows.length > 0;
     } else {
       const row = this.sqliteDb.prepare(
-        'SELECT id FROM user_tasks WHERE user_id = ? AND task_id = ?'
+        "SELECT id, status FROM user_tasks WHERE user_id = ? AND task_id = ? AND status IN ('holding', 'approved')"
       ).get(uid, tid);
       return !!row;
     }
@@ -855,7 +895,7 @@ class DatabaseAdapter {
     if (!task) throw new Error('Task not found');
 
     const alreadyDone = await this.isTaskCompletedByUser(uid, tid);
-    if (alreadyDone) throw new Error('Task already completed');
+    if (alreadyDone) throw new Error('Task already completed or pending verification');
 
     const reward = parseFloat(task.reward);
 
@@ -864,19 +904,25 @@ class DatabaseAdapter {
       try {
         await client.query('BEGIN');
         await client.query(
-          `INSERT INTO user_tasks (user_id, task_id, reward) VALUES ($1, $2, $3)`,
-          [uid, tid, reward]
+          `INSERT INTO user_tasks (user_id, task_id, reward, channel_id, status, unlock_at, completed_at)
+           VALUES ($1, $2, $3, $4, 'holding', NOW() + INTERVAL '2 days', CURRENT_TIMESTAMP)
+           ON CONFLICT (user_id, task_id) DO UPDATE SET
+             reward = $3,
+             channel_id = $4,
+             status = 'holding',
+             unlock_at = NOW() + INTERVAL '2 days',
+             completed_at = CURRENT_TIMESTAMP`,
+          [uid, tid, reward, task.channel_id]
         );
         await client.query(
           `UPDATE tasks SET completed_count = completed_count + 1 WHERE id = $1`,
           [tid]
         );
-        // Check if max users reached
         if (task.max_users > 0 && task.completed_count + 1 >= task.max_users) {
           await client.query('UPDATE tasks SET is_active = 0 WHERE id = $1', [tid]);
         }
         await client.query(
-          `UPDATE users SET balance = balance + $1, total_earned = total_earned + $1 WHERE id = $2`,
+          `UPDATE users SET pending_balance = COALESCE(pending_balance, 0) + $1 WHERE id = $2`,
           [reward, uid]
         );
         await client.query('COMMIT');
@@ -888,9 +934,16 @@ class DatabaseAdapter {
       }
     } else {
       const tx = this.sqliteDb.transaction(() => {
-        this.sqliteDb.prepare(
-          `INSERT INTO user_tasks (user_id, task_id, reward) VALUES (?, ?, ?)`
-        ).run(uid, tid, reward);
+        this.sqliteDb.prepare(`
+          INSERT INTO user_tasks (user_id, task_id, reward, channel_id, status, unlock_at, completed_at)
+          VALUES (?, ?, ?, ?, 'holding', datetime('now', '+2 days'), CURRENT_TIMESTAMP)
+          ON CONFLICT(user_id, task_id) DO UPDATE SET
+            reward = excluded.reward,
+            channel_id = excluded.channel_id,
+            status = 'holding',
+            unlock_at = datetime('now', '+2 days'),
+            completed_at = CURRENT_TIMESTAMP
+        `).run(uid, tid, reward, task.channel_id);
 
         this.sqliteDb.prepare(
           `UPDATE tasks SET completed_count = completed_count + 1 WHERE id = ?`
@@ -901,21 +954,148 @@ class DatabaseAdapter {
         }
 
         this.sqliteDb.prepare(
-          `UPDATE users SET balance = balance + ?, total_earned = total_earned + ? WHERE id = ?`
-        ).run(reward, reward, uid);
+          `UPDATE users SET pending_balance = COALESCE(pending_balance, 0) + ? WHERE id = ?`
+        ).run(reward, uid);
       });
       tx();
     }
 
-    return { reward, updatedUser: await this.getUser(uid) };
+    return { reward, isHolding: true, updatedUser: await this.getUser(uid) };
+  }
+
+  // ================= 2-DAY HOLDING VERIFICATION QUERIES =================
+
+  async getPendingHoldingTasks(userId = null) {
+    if (this.isPostgres) {
+      if (userId) {
+        const res = await this.pgPool.query(
+          `SELECT ut.*, COALESCE(ut.channel_id, t.channel_id) as target_channel_id, t.title as task_title 
+           FROM user_tasks ut 
+           LEFT JOIN tasks t ON ut.task_id = t.id 
+           WHERE ut.user_id = $1 AND ut.status = 'holding'`,
+          [Number(userId)]
+        );
+        return res.rows;
+      } else {
+        const res = await this.pgPool.query(
+          `SELECT ut.*, COALESCE(ut.channel_id, t.channel_id) as target_channel_id, t.title as task_title 
+           FROM user_tasks ut 
+           LEFT JOIN tasks t ON ut.task_id = t.id 
+           WHERE ut.status = 'holding'`
+        );
+        return res.rows;
+      }
+    } else {
+      if (userId) {
+        return this.sqliteDb.prepare(
+          `SELECT ut.*, COALESCE(ut.channel_id, t.channel_id) as target_channel_id, t.title as task_title 
+           FROM user_tasks ut 
+           LEFT JOIN tasks t ON ut.task_id = t.id 
+           WHERE ut.user_id = ? AND ut.status = 'holding'`
+        ).all(Number(userId));
+      } else {
+        return this.sqliteDb.prepare(
+          `SELECT ut.*, COALESCE(ut.channel_id, t.channel_id) as target_channel_id, t.title as task_title 
+           FROM user_tasks ut 
+           LEFT JOIN tasks t ON ut.task_id = t.id 
+           WHERE ut.status = 'holding'`
+        ).all();
+      }
+    }
+  }
+
+  async approvePendingTask(userTaskId, userId, reward) {
+    const utId = Number(userTaskId);
+    const uid = Number(userId);
+    const rew = parseFloat(reward);
+
+    if (this.isPostgres) {
+      const client = await this.pgPool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(
+          "UPDATE user_tasks SET status = 'approved', approved_at = CURRENT_TIMESTAMP WHERE id = $1",
+          [utId]
+        );
+        await client.query(
+          `UPDATE users 
+           SET pending_balance = GREATEST(0, COALESCE(pending_balance, 0) - $1),
+               balance = balance + $1,
+               total_earned = total_earned + $1
+           WHERE id = $2`,
+          [rew, uid]
+        );
+        await client.query('COMMIT');
+        return true;
+      } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+      } finally {
+        client.release();
+      }
+    } else {
+      const tx = this.sqliteDb.transaction(() => {
+        this.sqliteDb.prepare(
+          "UPDATE user_tasks SET status = 'approved', approved_at = CURRENT_TIMESTAMP WHERE id = ?"
+        ).run(utId);
+        this.sqliteDb.prepare(
+          `UPDATE users 
+           SET pending_balance = MAX(0, COALESCE(pending_balance, 0) - ?),
+               balance = balance + ?,
+               total_earned = total_earned + ?
+           WHERE id = ?`
+        ).run(rew, rew, rew, uid);
+      });
+      tx();
+      return true;
+    }
+  }
+
+  async revokePendingTask(userTaskId, userId, reward) {
+    const utId = Number(userTaskId);
+    const uid = Number(userId);
+    const rew = parseFloat(reward);
+
+    if (this.isPostgres) {
+      const client = await this.pgPool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(
+          "UPDATE user_tasks SET status = 'revoked' WHERE id = $1",
+          [utId]
+        );
+        await client.query(
+          "UPDATE users SET pending_balance = GREATEST(0, COALESCE(pending_balance, 0) - $1) WHERE id = $2",
+          [rew, uid]
+        );
+        await client.query('COMMIT');
+        return true;
+      } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+      } finally {
+        client.release();
+      }
+    } else {
+      const tx = this.sqliteDb.transaction(() => {
+        this.sqliteDb.prepare(
+          "UPDATE user_tasks SET status = 'revoked' WHERE id = ?"
+        ).run(utId);
+        this.sqliteDb.prepare(
+          "UPDATE users SET pending_balance = MAX(0, COALESCE(pending_balance, 0) - ?) WHERE id = ?"
+        ).run(rew, uid);
+      });
+      tx();
+      return true;
+    }
   }
 
   async getUserCompletedTasks(userId) {
     const uid = Number(userId);
     if (this.isPostgres) {
       const query = `
-        SELECT ut.*, t.title FROM user_tasks ut
-        JOIN tasks t ON ut.task_id = t.id
+        SELECT ut.*, COALESCE(t.title, 'Channel Task') as title FROM user_tasks ut
+        LEFT JOIN tasks t ON ut.task_id = t.id
         WHERE ut.user_id = $1
         ORDER BY ut.completed_at DESC
       `;
@@ -923,8 +1103,8 @@ class DatabaseAdapter {
       return res.rows;
     } else {
       const query = `
-        SELECT ut.*, t.title FROM user_tasks ut
-        JOIN tasks t ON ut.task_id = t.id
+        SELECT ut.*, COALESCE(t.title, 'Channel Task') as title FROM user_tasks ut
+        LEFT JOIN tasks t ON ut.task_id = t.id
         WHERE ut.user_id = ?
         ORDER BY ut.completed_at DESC
       `;

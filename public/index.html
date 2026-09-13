@@ -44,7 +44,7 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/style.css?v=2.6">
 </head>
 <body class="dark-theme" data-theme="dark">
   <!-- Telegram Only Access Gate (Shown when accessed via external browser) -->
@@ -154,7 +154,7 @@
         <!-- 4-Stat Grid -->
         <div class="stats-grid-4">
           <div class="stat-box">
-            <div class="stat-box-label">Total Earned</div>
+            <div class="stat-box-label">Pending Rewards</div>
             <div class="stat-box-value"><span id="totalEarnedValue">0.00</span> ৳</div>
           </div>
           <div class="stat-box">
@@ -177,7 +177,11 @@
             Cashout Funds
           </button>
           <button class="btn-outline" id="homeTasksBtn">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+              <path d="M9 14l2 2 4-4"></path>
+            </svg>
             Tasks Feed
           </button>
         </div>
@@ -213,9 +217,11 @@
       <!-- Platform Guidelines on Home -->
       <div class="content-card" style="font-size: 12px; line-height: 1.6; color: var(--text-muted);">
         <div style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">Platform Guidelines</div>
-        <p>• Join active channels under the <b>Tasks</b> tab and tap <b>Verify</b> for immediate payouts.</p>
-        <p>• Leaving channels after receiving payment is prohibited and will freeze your account balance.</p>
-        <p>• Minimum cashout threshold: <b>20 ৳</b> via bKash / Nagad / Rocket, or <b>$1.00 USDT</b> via Binance ID.</p>
+        <p>• Join active channels under <b>Tasks</b> and tap <b>Verify</b> to claim your reward.</p>
+        <p>• Rewards are held in <b>Pending Rewards</b> for <b>2 days (48 hours)</b> to verify channel membership.</p>
+        <p>• After 48 hours, rewards automatically transfer to your withdrawable <b>Available Balance</b>.</p>
+        <p>• Leaving channels early will automatically cancel the pending reward.</p>
+        <p>• Minimum cashout threshold: <b>20 ৳</b> via bKash / Nagad, or <b>$1.00 USDT</b> via Binance Pay.</p>
       </div>
     </section>
 
@@ -401,10 +407,24 @@
         <span class="badge-tag" style="margin-bottom: 8px;">Affiliate & Referral Program</span>
         <h2 style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Invite Friends & Earn</h2>
         <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
-          Share your referral link. Earn <b style="color: #00c853;">+1.00 ৳</b> reward when your invited member activates!
+          Share your clean referral link. Earn <b style="color: #00c853;">+1.00 ৳</b> reward when your invited member activates!
         </p>
 
-        <div class="link-copy-container" style="margin-top: 10px;">
+        <!-- Format Switcher: Clean Web Link vs Telegram Bot Link -->
+        <div style="margin-top: 10px; display: flex; justify-content: center;">
+          <div class="ref-type-switcher">
+            <button type="button" class="ref-type-btn active" id="refTypeWebBtn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+              <span>Web Link</span>
+            </button>
+            <button type="button" class="ref-type-btn" id="refTypeTgBtn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.37.75-.56 2.93-1.28 4.88-2.12 5.86-2.54 2.79-1.16 3.37-1.36 3.75-1.37.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+              <span>Telegram Bot Link</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="link-copy-container" style="margin-top: 4px;">
           <input type="text" id="referralLinkInput" class="link-text-field" readonly value="Loading link...">
           <button class="link-copy-button" id="copyRefBtn">Copy</button>
         </div>
@@ -672,7 +692,11 @@
         <span class="nav-label">Home</span>
       </button>
       <button class="nav-item" data-tab="tasksTab">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+          <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+          <path d="M9 14l2 2 4-4"></path>
+        </svg>
         <span class="nav-label">Tasks</span>
       </button>
       <button class="nav-item" data-tab="walletTab">
@@ -691,6 +715,6 @@
     </nav>
   </div>
 
-  <script src="/app.js"></script>
+  <script src="/app.js?v=2.6"></script>
 </body>
 </html>

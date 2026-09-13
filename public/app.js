@@ -17,6 +17,9 @@ let selectedBdtWalletId = null;
 let selectedUsdtWalletId = null;
 let activeModalWalletType = 'BDT';
 let selectedModalProvider = 'bKash';
+let currentReferralType = 'web'; // 'web' (clean without ?start=) or 'tg' (bot deep link)
+let userWebRefLink = '';
+let userTgRefLink = '';
 
 // DOM Elements
 const balanceValueEl = document.getElementById('balanceValue');
@@ -303,8 +306,9 @@ async function loadUserData(tgUser, startParam) {
       }
     }
 
-    // Update Balance & Stats
-    updateBalanceDisplay(currentUser.balance, currentUser.total_earned, data.completedCount);
+    // Update Balance & Stats (Shows Available Balance and Pending Rewards)
+    const pendingRewardsVal = currentUser.pending_balance !== undefined ? currentUser.pending_balance : (currentUser.pendingBalance || 0);
+    updateBalanceDisplay(currentUser.balance, pendingRewardsVal, data.completedCount);
 
     // Populate Saved Wallets in UI
     userWallets = data.wallets || [];
@@ -320,11 +324,12 @@ async function loadUserData(tgUser, startParam) {
       loadAffiliateData();
     }
 
-    // Branded Referral Link (Never exposes raw user ID)
-    const refCode = currentUser.referral_code || (data.affiliate && data.affiliate.referralCode);
-    const refLink = currentUser.referral_link || (data.affiliate && data.affiliate.referralLink) || (refCode ? `https://t.me/${botUsername}?start=${refCode}` : `https://t.me/${botUsername}`);
-    const refLinkInput = document.getElementById('referralLinkInput');
-    if (refLinkInput) refLinkInput.value = refLink;
+    // Branded Referral Links: Clean Web Link & Direct Telegram Link
+    const refCode = currentUser.referral_code || (data.affiliate && data.affiliate.referralCode) || `TgBoost_Monetize${currentUser.id}`;
+    const webBase = window.location.origin;
+    userWebRefLink = currentUser.web_referral_link || (data.affiliate && data.affiliate.webReferralLink) || `${webBase}/r/${refCode}`;
+    userTgRefLink = currentUser.referral_link || (data.affiliate && data.affiliate.referralLink) || `https://t.me/${botUsername}?start=${refCode}`;
+    updateReferralLinkDisplay();
 
     // Preload Tasks & History
     loadTasks();
@@ -336,10 +341,10 @@ async function loadUserData(tgUser, startParam) {
 }
 
 // Update Balance Display
-function updateBalanceDisplay(balance, totalEarned, completedCount) {
+function updateBalanceDisplay(balance, pendingRewards, completedCount) {
   const balNum = parseFloat(balance || 0);
   balanceValueEl.textContent = balNum.toFixed(2);
-  totalEarnedValueEl.textContent = parseFloat(totalEarned || 0).toFixed(2);
+  totalEarnedValueEl.textContent = parseFloat(pendingRewards || 0).toFixed(2);
   
   if (homeUsdtEqEl) {
     const usdtEq = (balNum / usdtRate).toFixed(2);
@@ -795,11 +800,8 @@ async function loadTasks() {
         <div class="task-card" id="taskCard_${task.id}">
           <div class="task-top">
             <div class="task-left-meta">
-              <div class="task-icon-box">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path d="M21.5 3.5L2 11.5L9.5 14.5L12 21.5L15.5 17L19.5 20L21.5 3.5Z" fill="var(--tg-blue)"/>
-                  <path d="M9.5 14.5L21.5 3.5L12 16.5" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+              <div class="task-icon-box" style="background: transparent; border: none; padding: 0;">
+                <img src="/img/telegram.svg" class="task-tg-logo-img" alt="Telegram">
               </div>
               <div class="task-info-box">
                 <div class="task-heading">${task.title}</div>
@@ -814,8 +816,8 @@ async function loadTasks() {
           </div>
           <div class="task-btn-grid">
             <a href="${task.channel_link}" target="_blank" class="btn-join-channel" onclick="triggerHaptic('light')">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-              Join Channel
+              <img src="/img/telegram.svg" width="16" height="16" alt="Telegram" style="border-radius: 50%; vertical-align: middle;">
+              <span>Join Channel</span>
             </a>
             <button class="btn-verify-task" id="verifyBtn_${task.id}" onclick="verifyTask(${task.id})">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -881,11 +883,12 @@ async function verifyTask(taskId) {
 
     showToast(result.message || 'Verification successful!', 'success');
 
-    // Update User Balance & UI
+    // Update User Balance & UI with Pending Rewards
     currentUser.balance = result.user.balance;
+    currentUser.pending_balance = result.user.pending_balance !== undefined ? result.user.pending_balance : (currentUser.pending_balance || 0);
     currentUser.total_earned = result.user.total_earned;
     const currentCompleted = parseInt(completedTasksCountEl.textContent || '0', 10) + 1;
-    updateBalanceDisplay(currentUser.balance, currentUser.total_earned, currentCompleted);
+    updateBalanceDisplay(currentUser.balance, currentUser.pending_balance, currentCompleted);
 
     // Remove task card smoothly
     const card = document.getElementById(`taskCard_${taskId}`);
@@ -1267,6 +1270,18 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// Update Referral Link Display Based on Selected Type (Clean Web or Telegram Bot)
+function updateReferralLinkDisplay() {
+  const refLinkInput = document.getElementById('referralLinkInput');
+  if (!refLinkInput) return;
+  const linkToDisplay = (currentReferralType === 'web' && userWebRefLink)
+    ? userWebRefLink
+    : (userTgRefLink || userWebRefLink);
+  if (linkToDisplay) {
+    refLinkInput.value = linkToDisplay;
+  }
+}
+
 // Render Affiliate UI with Stats and Members List
 function renderAffiliateUI(affiliate) {
   if (!affiliate) return;
@@ -1291,11 +1306,10 @@ function renderAffiliateUI(affiliate) {
   if (homeRefCount) homeRefCount.textContent = active;
   if (homeRefEarnings) homeRefEarnings.textContent = earned;
 
-  // Update Referral Link Input (Branded Format)
-  if (affiliate.referralLink) {
-    const refLinkInput = document.getElementById('referralLinkInput');
-    if (refLinkInput) refLinkInput.value = affiliate.referralLink;
-  }
+  // Sync Referral Links
+  if (affiliate.webReferralLink) userWebRefLink = affiliate.webReferralLink;
+  if (affiliate.referralLink) userTgRefLink = affiliate.referralLink;
+  updateReferralLinkDisplay();
 
   // Render Member List
   const listEl = document.getElementById('referredMembersList');
@@ -1543,6 +1557,26 @@ function setupEventListeners() {
   // Submit Cashouts
   if (submitBdtWithdrawBtn) submitBdtWithdrawBtn.addEventListener('click', submitBdtWithdrawal);
   if (submitUsdtWithdrawBtn) submitUsdtWithdrawBtn.addEventListener('click', submitUsdtWithdrawal);
+
+  // Referral Format Switcher Buttons (Clean Web Link vs Telegram Bot Link)
+  const refTypeWebBtn = document.getElementById('refTypeWebBtn');
+  const refTypeTgBtn = document.getElementById('refTypeTgBtn');
+  if (refTypeWebBtn && refTypeTgBtn) {
+    refTypeWebBtn.addEventListener('click', () => {
+      currentReferralType = 'web';
+      refTypeWebBtn.classList.add('active');
+      refTypeTgBtn.classList.remove('active');
+      updateReferralLinkDisplay();
+      triggerHaptic('light');
+    });
+    refTypeTgBtn.addEventListener('click', () => {
+      currentReferralType = 'tg';
+      refTypeTgBtn.classList.add('active');
+      refTypeWebBtn.classList.remove('active');
+      updateReferralLinkDisplay();
+      triggerHaptic('light');
+    });
+  }
 
   // Copy Referral Link
   const copyRefBtn = document.getElementById('copyRefBtn');

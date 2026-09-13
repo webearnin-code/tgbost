@@ -97,7 +97,8 @@ function createBot() {
   // Callback Queries for Admin
   bot.action('admin_panel', handleAdminPanel);
   bot.action('admin_stats', handleAdminPanel);
-  bot.action('admin_add_task', handleAdminAddTaskStart);
+  bot.action('admin_add_task_channel', (ctx) => handleAdminAddTaskStart(ctx, 'channel'));
+  bot.action('admin_add_task_bot', (ctx) => handleAdminAddTaskStart(ctx, 'bot'));
   bot.action('admin_manage_tasks', handleAdminManageTasks);
   bot.action(/^admin_task_detail_(\d+)$/, (ctx) => handleAdminTaskDetail(ctx, ctx.match[1]));
   bot.action(/^admin_task_toggle_(\d+)$/, (ctx) => handleAdminToggleTask(ctx, ctx.match[1]));

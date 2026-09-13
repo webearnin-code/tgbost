@@ -26,18 +26,16 @@ async function handleAdminPanel(ctx) {
 
     const keyboard = Markup.inlineKeyboard([
       [
-        Markup.button.callback('Add New Task', 'admin_add_task'),
-        Markup.button.callback('Manage Tasks', 'admin_manage_tasks')
+        Markup.button.callback('Add Group / Channel Task', 'admin_add_task_channel'),
+        Markup.button.callback('Add Bot Task', 'admin_add_task_bot')
       ],
       [
-        Markup.button.callback(`Pending Cashouts (${stats.pendingWithdrawals})`, 'admin_pending_withdrawals'),
+        Markup.button.callback('Manage Tasks', 'admin_manage_tasks'),
+        Markup.button.callback(`Pending Cashouts (${stats.pendingWithdrawals})`, 'admin_pending_withdrawals')
+      ],
+      [
+        Markup.button.callback('Broadcast Announcement', 'admin_broadcast'),
         Markup.button.callback('Refresh Statistics', 'admin_stats')
-      ],
-      [
-        Markup.button.callback('Broadcast Announcement', 'admin_broadcast')
-      ],
-      [
-        Markup.button.callback('Refresh Dashboard', 'admin_panel')
       ]
     ]);
 
@@ -54,20 +52,20 @@ async function handleAdminPanel(ctx) {
 
 // ---------------- ADD TASK WIZARD ----------------
 
-async function handleAdminAddTaskStart(ctx) {
+async function handleAdminAddTaskStart(ctx, type = 'channel') {
   const adminUser = ctx.from;
   if (!config.isAdmin(adminUser)) return;
 
   adminStates.set(adminUser.id, {
     action: 'ADD_TASK',
     step: 'TITLE',
-    data: {}
+    data: { task_type: type }
   });
 
   const msg =
-    `<b>Create New Channel Task:</b>\n\n` +
-    `Step 1/5: <b>Enter a descriptive task title</b>\n` +
-    `<i>(e.g., Official Announcement Channel)</i>\n\n` +
+    `<b>Create New ${type === 'bot' ? 'Telegram Bot' : 'Group/Channel'} Task:</b>\n\n` +
+    `Step 1/4: <b>Enter a descriptive task title</b>\n` +
+    `<i>(e.g., ${type === 'bot' ? 'Join Airdrop Bot' : 'Official Announcement Channel'})</i>\n\n` +
     `Type /cancel to abort.`;
 
   const kb = Markup.inlineKeyboard([[Markup.button.callback('Cancel', 'admin_panel')]]);
@@ -88,11 +86,14 @@ async function handleAdminManageTasks(ctx) {
   const tasks = await db.getAllTasks();
 
   if (!tasks || tasks.length === 0) {
-    const msg = `<b>No tasks found!</b>\n\nTap below to publish your first channel task.`;
+    const msg = `<b>No tasks found!</b>\n\nTap below to publish your first task.`;
     return ctx.editMessageText(msg, {
       parse_mode: 'HTML',
       ...Markup.inlineKeyboard([
-        [Markup.button.callback('Add New Task', 'admin_add_task')],
+        [
+          Markup.button.callback('Add Group / Channel Task', 'admin_add_task_channel'),
+          Markup.button.callback('Add Bot Task', 'admin_add_task_bot')
+        ],
         [Markup.button.callback('Back to Dashboard', 'admin_panel')]
       ])
     });
@@ -338,33 +339,14 @@ async function handleAdminText(ctx) {
         return true;
       }
       state.data.title = text;
-      state.step = 'CHANNEL_ID';
-      adminStates.set(adminUser.id, state);
-
-      await ctx.reply(
-        `Task Title: <b>${text}</b>\n\n` +
-        `Step 2/5: <b>Enter Channel Username or Chat ID:</b>\n` +
-        `<i>(e.g., @my_channel or -1001234567890)</i>\n\n` +
-        `Note: Make sure your bot is added as an <b>Administrator</b> in this channel.`,
-        { parse_mode: 'HTML' }
-      );
-      return true;
-    }
-
-    if (state.step === 'CHANNEL_ID') {
-      let channelId = text;
-      if (!channelId.startsWith('@') && !channelId.startsWith('-100') && !/^-?\d+$/.test(channelId)) {
-        channelId = '@' + channelId;
-      }
-
-      state.data.channel_id = channelId;
       state.step = 'CHANNEL_LINK';
       adminStates.set(adminUser.id, state);
 
       await ctx.reply(
-        `Channel ID Saved: <code>${channelId}</code>\n\n` +
-        `Step 3/5: <b>Enter Public or Invite Link:</b>\n` +
-        `<i>(e.g., https://t.me/my_channel)</i>`,
+        `Task Title: <b>${text}</b>\n\n` +
+        `Step 2/4: <b>Enter Join Link:</b>\n` +
+        `<i>(e.g., https://t.me/my_channel or https://t.me/AirdropBot?start=123)</i>\n\n` +
+        (state.data.task_type === 'channel' ? `Note: Make sure your bot is added as an <b>Administrator</b> in this channel/group.` : `Note: Please provide the exact referral or start link for the bot.`),
         { parse_mode: 'HTML' }
       );
       return true;
@@ -379,13 +361,39 @@ async function handleAdminText(ctx) {
       let link = text;
       if (link.startsWith('t.me/')) link = 'https://' + link;
 
+      // Automatically extract the username/channel_id from the link
+      let extractedId = '';
+      const match = link.match(/t\.me\/(?:\+)?([a-zA-Z0-9_]+)/i);
+      
+      if (state.data.task_type === 'bot') {
+        if (match) {
+          extractedId = match[1];
+        } else {
+          extractedId = 'bot'; // fallback
+        }
+        // Ensure it ends with bot (as required by Telegram) but we append it anyway if it doesn't to mark it as bot task
+        if (!extractedId.toLowerCase().endsWith('bot')) extractedId += 'bot';
+        extractedId = '@' + extractedId;
+      } else {
+        if (match && !link.includes('t.me/+')) {
+          extractedId = '@' + match[1]; // public channel username
+        } else {
+          // It's a private invite link (e.g. t.me/+AbCd) or unable to parse.
+          // Because user requested to remove the ID step, we will use a dummy ID.
+          // Note: getChatMember will NOT work for this private channel without the real -100 ID.
+          // For now, we store the link as the ID fallback.
+          extractedId = link; 
+        }
+      }
+
+      state.data.channel_id = extractedId;
       state.data.channel_link = link;
       state.step = 'REWARD';
       adminStates.set(adminUser.id, state);
 
       await ctx.reply(
-        `Join Link Saved: ${link}\n\n` +
-        `Step 4/5: <b>Enter Reward Amount per Member:</b>\n` +
+        `Join Link Saved!\n\n` +
+        `Step 3/4: <b>Enter Reward Amount per Member:</b>\n` +
         `<i>(e.g., 2.00 or 2.50)</i>`,
         { parse_mode: 'HTML' }
       );
@@ -405,7 +413,7 @@ async function handleAdminText(ctx) {
 
       await ctx.reply(
         `Reward set: <b>${rew.toFixed(2)} ${config.currency}</b>\n\n` +
-        `Step 5/5: <b>Enter Maximum Members Limit:</b>\n` +
+        `Step 4/4: <b>Enter Maximum Members Limit:</b>\n` +
         `<i>(Enter <code>0</code> for unlimited, or a specific limit like <code>100</code>):</i>`,
         { parse_mode: 'HTML' }
       );
@@ -439,6 +447,10 @@ async function handleAdminText(ctx) {
         parse_mode: 'HTML',
         ...Markup.inlineKeyboard([
           [Markup.button.callback('Manage Tasks', 'admin_manage_tasks')],
+          [
+            Markup.button.callback('Add Group/Channel Task', 'admin_add_task_channel'),
+            Markup.button.callback('Add Bot Task', 'admin_add_task_bot')
+          ],
           [Markup.button.callback('Admin Dashboard', 'admin_panel')]
         ])
       });

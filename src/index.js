@@ -106,10 +106,11 @@ async function bootstrap() {
       await bot.telegram.deleteWebhook();
     } catch (e) {}
 
+    console.log('🤖 Starting Telegram Bot polling...');
     bot.launch({
       dropPendingUpdates: true
     }).then(() => {
-      console.log('🤖 Bot is now running via Long Polling!');
+      console.log('🛑 Bot polling stopped.');
     }).catch((err) => {
       console.error('❌ Failed to launch bot polling:', err);
     });

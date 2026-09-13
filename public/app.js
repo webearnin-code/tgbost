@@ -815,9 +815,9 @@ async function loadTasks() {
             <div class="reward-pill">+${rewardFormatted} ${currentUser.currency}</div>
           </div>
           <div class="task-btn-grid">
-            <a href="${task.channel_link}" target="_blank" class="btn-join-channel" onclick="triggerHaptic('light')">
+            <a href="${task.channel_link}" target="_blank" class="btn-join-channel" onclick="trackTaskClick(${task.id}); triggerHaptic('light')">
               <img src="/img/telegram.svg" width="16" height="16" alt="Telegram" style="border-radius: 50%; vertical-align: middle;">
-              <span>Join Channel</span>
+              <span>Join Channel / Bot</span>
             </a>
             <button class="btn-verify-task" id="verifyBtn_${task.id}" onclick="verifyTask(${task.id})">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -839,11 +839,33 @@ async function loadTasks() {
   }
 }
 
+// Track clicks to enforce a time delay for bot/channel verification
+function trackTaskClick(taskId) {
+  window.taskClickTimes = window.taskClickTimes || {};
+  window.taskClickTimes[taskId] = Date.now();
+}
+
 // Verify Task Action
 async function verifyTask(taskId) {
   if (!currentUser) return;
   const btn = document.getElementById(`verifyBtn_${taskId}`);
   if (!btn || btn.disabled) return;
+
+  window.taskClickTimes = window.taskClickTimes || {};
+  const clickedAt = window.taskClickTimes[taskId];
+  
+  if (!clickedAt) {
+    showToast('Please tap "Join Channel / Bot" first!', 'error');
+    triggerHaptic('error');
+    return;
+  }
+
+  const elapsedSeconds = (Date.now() - clickedAt) / 1000;
+  if (elapsedSeconds < 12) {
+    showToast('Verification failed! You did not start the bot or stay in the channel long enough. Please wait 12 seconds.', 'error');
+    triggerHaptic('error');
+    return;
+  }
 
   btn.disabled = true;
   const originalText = btn.innerHTML;

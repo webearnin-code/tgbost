@@ -43,29 +43,33 @@ async function checkHoldingTask(bot, task) {
   let userLeft = false;
   let channelInaccessible = false;
 
-  try {
-    member = await bot.telegram.getChatMember(channelTarget, task.user_id);
-    const validStatuses = ['creator', 'administrator', 'member', 'restricted'];
-    if (!member || !validStatuses.includes(member.status)) {
-      userLeft = true;
-    }
-  } catch (err) {
-    const msg = (err.message || '').toLowerCase();
-    if (msg.includes('user_not_participant')) {
-      userLeft = true;
-    } else if (
-      msg.includes('chat not found') ||
-      msg.includes('bot is not a member') ||
-      msg.includes('bot was kicked') ||
-      msg.includes('channel_private') ||
-      msg.includes('chat_admin_required')
-    ) {
-      // Channel was removed or bot is no longer admin in channel
-      // Do NOT penalize the user if the channel owner deleted the channel/bot!
-      channelInaccessible = true;
-    } else {
-      console.warn(`[HoldingVerifier] Temporary check warning for user ${task.user_id} in ${channelTarget}:`, err.message);
-      return { status: 'error', error: err.message };
+  const isBotTask = channelTarget.toLowerCase().endsWith('bot');
+
+  if (!isBotTask) {
+    try {
+      member = await bot.telegram.getChatMember(channelTarget, task.user_id);
+      const validStatuses = ['creator', 'administrator', 'member', 'restricted'];
+      if (!member || !validStatuses.includes(member.status)) {
+        userLeft = true;
+      }
+    } catch (err) {
+      const msg = (err.message || '').toLowerCase();
+      if (msg.includes('user_not_participant')) {
+        userLeft = true;
+      } else if (
+        msg.includes('chat not found') ||
+        msg.includes('bot is not a member') ||
+        msg.includes('bot was kicked') ||
+        msg.includes('channel_private') ||
+        msg.includes('chat_admin_required')
+      ) {
+        // Channel was removed or bot is no longer admin in channel
+        // Do NOT penalize the user if the channel owner deleted the channel/bot!
+        channelInaccessible = true;
+      } else {
+        console.warn(`[HoldingVerifier] Temporary check warning for user ${task.user_id} in ${channelTarget}:`, err.message);
+        return { status: 'error', error: err.message };
+      }
     }
   }
 

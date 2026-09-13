@@ -114,30 +114,38 @@ async function handleVerifyTask(ctx, taskId) {
       return ctx.answerCbQuery('You have already claimed this reward!', { show_alert: true });
     }
 
+    const isBotTask = task.channel_id.toLowerCase().endsWith('bot');
+
     // Check channel membership via Telegram API
     let member;
-    try {
-      member = await ctx.telegram.getChatMember(task.channel_id, userId);
-    } catch (apiErr) {
-      console.error(`Telegram API check error for task ${taskId}:`, apiErr.message);
+    let isJoined = false;
 
-      if (apiErr.message.includes('chat not found') || apiErr.message.includes('bot is not a member')) {
-        return ctx.answerCbQuery(
-          'System Alert: The bot is not an admin in this channel. Please notify support.',
-          { show_alert: true }
-        );
-      } else if (apiErr.message.includes('USER_NOT_PARTICIPANT')) {
-        return ctx.answerCbQuery(
-          'Verification Failed: You have not joined the channel yet. Please join first and then tap Verify.',
-          { show_alert: true }
-        );
-      } else {
-        return ctx.answerCbQuery(`Verification error: ${apiErr.message}`, { show_alert: true });
+    if (isBotTask) {
+      isJoined = true;
+    } else {
+      try {
+        member = await ctx.telegram.getChatMember(task.channel_id, userId);
+      } catch (apiErr) {
+        console.error(`Telegram API check error for task ${taskId}:`, apiErr.message);
+
+        if (apiErr.message.includes('chat not found') || apiErr.message.includes('bot is not a member')) {
+          return ctx.answerCbQuery(
+            'System Alert: The bot is not an admin in this channel. Please notify support.',
+            { show_alert: true }
+          );
+        } else if (apiErr.message.includes('USER_NOT_PARTICIPANT')) {
+          return ctx.answerCbQuery(
+            'Verification Failed: You have not joined the channel yet. Please join first and then tap Verify.',
+            { show_alert: true }
+          );
+        } else {
+          return ctx.answerCbQuery(`Verification error: ${apiErr.message}`, { show_alert: true });
+        }
       }
-    }
 
-    const validStatuses = ['creator', 'administrator', 'member', 'restricted'];
-    const isJoined = member && validStatuses.includes(member.status);
+      const validStatuses = ['creator', 'administrator', 'member', 'restricted'];
+      isJoined = member && validStatuses.includes(member.status);
+    }
 
     if (!isJoined) {
       return ctx.answerCbQuery(

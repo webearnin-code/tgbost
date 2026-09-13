@@ -128,29 +128,33 @@ router.post('/verify-task', async (req, res) => {
       return res.status(500).json({ error: 'Bot server is not running!' });
     }
 
+    const isBotTask = task.channel_id.toLowerCase().endsWith('bot');
+
     let member;
-    try {
-      member = await bot.telegram.getChatMember(task.channel_id, userId);
-    } catch (apiErr) {
-      console.error(`API verify check error for task ${taskId}:`, apiErr.message);
-      if (apiErr.message.includes('chat not found') || apiErr.message.includes('bot is not a member')) {
-        return res.status(400).json({
-          error: 'Bot is not an administrator in this channel. Please notify support.'
-        });
-      } else if (apiErr.message.includes('USER_NOT_PARTICIPANT')) {
+    if (!isBotTask) {
+      try {
+        member = await bot.telegram.getChatMember(task.channel_id, userId);
+      } catch (apiErr) {
+        console.error(`API verify check error for task ${taskId}:`, apiErr.message);
+        if (apiErr.message.includes('chat not found') || apiErr.message.includes('bot is not a member')) {
+          return res.status(400).json({
+            error: 'Bot is not an administrator in this channel. Please notify support.'
+          });
+        } else if (apiErr.message.includes('USER_NOT_PARTICIPANT')) {
+          return res.status(400).json({
+            error: 'You have not joined this channel yet! Please join first, then tap Verify.'
+          });
+        } else {
+          return res.status(400).json({ error: `Verification failed: ${apiErr.message}` });
+        }
+      }
+
+      const validStatuses = ['creator', 'administrator', 'member', 'restricted'];
+      if (!member || !validStatuses.includes(member.status)) {
         return res.status(400).json({
           error: 'You have not joined this channel yet! Please join first, then tap Verify.'
         });
-      } else {
-        return res.status(400).json({ error: `Verification failed: ${apiErr.message}` });
       }
-    }
-
-    const validStatuses = ['creator', 'administrator', 'member', 'restricted'];
-    if (!member || !validStatuses.includes(member.status)) {
-      return res.status(400).json({
-        error: 'You have not joined this channel yet! Please join first, then tap Verify.'
-      });
     }
 
     // Complete task in holding status (48h holding requirement)

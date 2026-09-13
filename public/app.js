@@ -119,8 +119,34 @@ function applyTheme(dark) {
   }
 }
 
+// Detect if running inside Telegram WebApp environment
+function isTelegramEnvironment() {
+  const hasInitData = typeof tg?.initData === 'string' && tg.initData.trim().length > 0;
+  const hasUser = !!tg?.initDataUnsafe?.user?.id;
+  const hasHashData = window.location.hash.includes('tgWebAppData') || window.location.hash.includes('tgWebAppVersion');
+  const hasSearchPlatform = window.location.search.includes('tgWebAppPlatform');
+  return hasInitData || hasUser || hasHashData || hasSearchPlatform;
+}
+
 // Initialize Telegram WebApp SDK
 function initTelegramApp() {
+  if (!isTelegramEnvironment()) {
+    // Strictly block direct browser access
+    document.documentElement.classList.add('not-telegram');
+    const gate = document.getElementById('telegramOnlyGate');
+    const appEl = document.getElementById('app');
+    if (gate) gate.style.display = 'flex';
+    if (appEl) appEl.style.display = 'none';
+    return null;
+  }
+
+  // Inside Telegram: ensure gate is hidden and app is displayed
+  document.documentElement.classList.remove('not-telegram');
+  const gate = document.getElementById('telegramOnlyGate');
+  const appEl = document.getElementById('app');
+  if (gate) gate.style.display = 'none';
+  if (appEl) appEl.style.display = 'block';
+
   if (tg) {
     try {
       tg.ready();
@@ -147,12 +173,7 @@ function initTelegramApp() {
         username: userFromParam || ''
       };
     } else {
-      // Default guest profile for testing in browser without Telegram SDK
-      tgUser = {
-        id: '710029381',
-        first_name: 'Guest User',
-        username: 'guest_user'
-      };
+      return null;
     }
   }
 
@@ -230,8 +251,7 @@ async function loadUserData(tgUser, startParam) {
   try {
     let url = `/api/user?id=${tgUser.id}&first_name=${encodeURIComponent(tgUser.first_name || '')}&username=${encodeURIComponent(tgUser.username || '')}`;
     if (startParam) {
-      const refId = startParam.replace('ref_', '');
-      url += `&referrer=${refId}`;
+      url += `&referrer=${encodeURIComponent(startParam)}`;
     }
 
     const res = await fetch(url);
@@ -300,7 +320,9 @@ async function loadUserData(tgUser, startParam) {
       loadAffiliateData();
     }
 
-    const refLink = `https://t.me/${botUsername}?start=ref_${currentUser.id}`;
+    // Branded Referral Link (Never exposes raw user ID)
+    const refCode = currentUser.referral_code || (data.affiliate && data.affiliate.referralCode);
+    const refLink = currentUser.referral_link || (data.affiliate && data.affiliate.referralLink) || (refCode ? `https://t.me/${botUsername}?start=${refCode}` : `https://t.me/${botUsername}`);
     const refLinkInput = document.getElementById('referralLinkInput');
     if (refLinkInput) refLinkInput.value = refLink;
 
@@ -1269,6 +1291,12 @@ function renderAffiliateUI(affiliate) {
   if (homeRefCount) homeRefCount.textContent = active;
   if (homeRefEarnings) homeRefEarnings.textContent = earned;
 
+  // Update Referral Link Input (Branded Format)
+  if (affiliate.referralLink) {
+    const refLinkInput = document.getElementById('referralLinkInput');
+    if (refLinkInput) refLinkInput.value = affiliate.referralLink;
+  }
+
   // Render Member List
   const listEl = document.getElementById('referredMembersList');
   if (listEl) {
@@ -1327,7 +1355,9 @@ async function loadAffiliateData() {
 async function shareOnSocial() {
   triggerHaptic('medium');
   const input = document.getElementById('referralLinkInput');
-  const refLink = input && input.value ? input.value : `https://t.me/${botUsername}?start=ref_${currentUser ? currentUser.id : ''}`;
+  const refLink = (input && input.value && !input.value.includes('Loading'))
+    ? input.value
+    : (currentUser?.referral_link || (currentUser?.referral_code ? `https://t.me/${botUsername}?start=${currentUser.referral_code}` : `https://t.me/${botUsername}`));
   const shareText = `Join TG BOOST to earn daily cash rewards by completing simple Telegram tasks!\nInstant cashouts via bKash, Nagad, and Binance.\nJoin now:\n${refLink}`;
 
   if (navigator.share) {
@@ -1590,7 +1620,12 @@ function switchTab(tabId) {
 // Bootstrapping
 window.addEventListener('DOMContentLoaded', () => {
   initTelegramTheme();
-  const { tgUser, startParam } = initTelegramApp();
+  const initResult = initTelegramApp();
+  if (!initResult) {
+    // Access Gate Active: direct browser access blocked
+    return;
+  }
+  const { tgUser, startParam } = initResult;
   setupEventListeners();
   loadUserData(tgUser, startParam);
 });

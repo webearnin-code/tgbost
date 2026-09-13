@@ -8,8 +8,8 @@ async function handleShowReferral(ctx) {
     const botInfo = await ctx.telegram.getMe();
     const botUsername = botInfo.username;
 
-    const refLink = `https://t.me/${botUsername}?start=ref_${userId}`;
     const affiliate = await db.getAffiliateData(userId);
+    const refLink = affiliate.referralLink || `https://t.me/${botUsername}?start=${affiliate.referralCode}`;
 
     const shareText = encodeURIComponent(
       `Join Telegram channels and earn daily cash rewards with instant payouts!\n` +

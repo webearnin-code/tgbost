@@ -6,16 +6,7 @@ async function handleStart(ctx) {
   try {
     const telegramUser = ctx.from;
     const startPayload = ctx.message && ctx.message.text ? ctx.message.text.split(' ')[1] : null;
-
-    let referrerId = null;
-    if (startPayload && startPayload.startsWith('ref_')) {
-      const parsedId = startPayload.replace('ref_', '').trim();
-      if (/^\d+$/.test(parsedId)) {
-        referrerId = parsedId;
-      }
-    }
-
-    const { user, isNew, referrerId: validRef, qualifiedReferral } = await db.getOrCreateUser(telegramUser, referrerId);
+    const { user, isNew, referrerId: validRef, qualifiedReferral } = await db.getOrCreateUser(telegramUser, startPayload);
 
     // Notify referrer that a new pending member joined
     if (isNew && validRef) {

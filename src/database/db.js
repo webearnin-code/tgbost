@@ -104,6 +104,12 @@ class DatabaseAdapter {
     try {
       this.sqliteDb.prepare('ALTER TABLE users ADD COLUMN is_referral_rewarded INTEGER DEFAULT 0').run();
     } catch (e) {}
+    try {
+      this.sqliteDb.prepare('ALTER TABLE users ADD COLUMN referral_code TEXT').run();
+    } catch (e) {}
+    try {
+      this.sqliteDb.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code)').run();
+    } catch (e) {}
 
     // Dedicated User Wallets Table (Supports bKash, Nagad, Rocket, Binance)
     try {
@@ -222,6 +228,7 @@ class DatabaseAdapter {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS bdt_account_2_number TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS binance_id TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_referral_rewarded INTEGER DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE;
     `);
   }
 
@@ -399,38 +406,102 @@ class DatabaseAdapter {
     }
   }
 
+  // ================= REFERRAL CODE MANAGEMENT =================
+
+  async getUserByReferralCode(code) {
+    if (!code) return null;
+    const clean = String(code).trim();
+    if (this.isPostgres) {
+      const res = await this.pgPool.query('SELECT * FROM users WHERE referral_code = $1', [clean]);
+      return res.rows[0] || null;
+    } else {
+      return this.sqliteDb.prepare('SELECT * FROM users WHERE referral_code = ?').get(clean) || null;
+    }
+  }
+
+  async resolveReferrerId(refInput) {
+    if (!refInput) return null;
+    const str = String(refInput).trim();
+    if (!str) return null;
+
+    // 1. Check if referral_code directly matches (e.g. TgBoost_Monetize816804)
+    const byCode = await this.getUserByReferralCode(str);
+    if (byCode) return Number(byCode.id);
+
+    // 2. Check if legacy ref_ prefix (e.g. ref_6216116804 or ref_TgBoost_Monetize...)
+    if (str.startsWith('ref_')) {
+      const parsed = str.replace('ref_', '').trim();
+      if (/^\d+$/.test(parsed)) return Number(parsed);
+      const bySub = await this.getUserByReferralCode(parsed);
+      if (bySub) return Number(bySub.id);
+    }
+
+    // 3. Check if raw numeric ID (legacy fallback)
+    if (/^\d+$/.test(str)) {
+      return Number(str);
+    }
+
+    return null;
+  }
+
+  async generateUniqueReferralCode(userId) {
+    // Generates branded masked referral code replacing 'bot' with unique numbers: TgBoost_Monetize<number>
+    let baseNum = 100000 + (Math.abs(Number(userId)) % 899999);
+    let code = `TgBoost_Monetize${baseNum}`;
+    let attempts = 0;
+    while (attempts < 50) {
+      const existing = await this.getUserByReferralCode(code);
+      if (!existing || Number(existing.id) === Number(userId)) {
+        return code;
+      }
+      baseNum = 100000 + Math.floor(Math.random() * 899999);
+      code = `TgBoost_Monetize${baseNum}`;
+      attempts++;
+    }
+    return `TgBoost_Monetize${Date.now().toString().slice(-6)}`;
+  }
+
   // ================= USER OPERATIONS =================
 
-  async getOrCreateUser(telegramUser, referrerId = null) {
+  async getOrCreateUser(telegramUser, rawReferrer = null) {
     const userId = Number(telegramUser.id);
     const username = telegramUser.username || null;
     const firstName = telegramUser.first_name || '';
     const lastName = telegramUser.last_name || '';
+    const validReferrerId = await this.resolveReferrerId(rawReferrer);
 
     if (this.isPostgres) {
       let res = await this.pgPool.query('SELECT * FROM users WHERE id = $1', [userId]);
       if (res.rows.length > 0) {
-        // Update user profile info
+        let user = res.rows[0];
+        let refCode = user.referral_code;
+        if (!refCode) {
+          refCode = await this.generateUniqueReferralCode(userId);
+          await this.pgPool.query('UPDATE users SET referral_code = $1 WHERE id = $2', [refCode, userId]);
+          user.referral_code = refCode;
+        }
         await this.pgPool.query(
           'UPDATE users SET username = $1, first_name = $2, last_name = $3 WHERE id = $4',
           [username, firstName, lastName, userId]
         );
-        return { user: res.rows[0], isNew: false };
+        user.referral_link = `https://t.me/TgBoost_Monetizebot?start=${user.referral_code}`;
+        return { user, isNew: false };
       }
 
       // Handle referral
       let validReferrer = null;
-      if (referrerId && Number(referrerId) !== userId) {
-        const refRes = await this.pgPool.query('SELECT id FROM users WHERE id = $1', [Number(referrerId)]);
+      if (validReferrerId && Number(validReferrerId) !== userId) {
+        const refRes = await this.pgPool.query('SELECT id FROM users WHERE id = $1', [Number(validReferrerId)]);
         if (refRes.rows.length > 0) {
-          validReferrer = Number(referrerId);
+          validReferrer = Number(validReferrerId);
         }
       }
 
+      const newRefCode = await this.generateUniqueReferralCode(userId);
       res = await this.pgPool.query(
-        `INSERT INTO users (id, username, first_name, last_name, referred_by, is_referral_rewarded)
-         VALUES ($1, $2, $3, $4, $5, 0) RETURNING *`,
-        [userId, username, firstName, lastName, validReferrer]
+        `INSERT INTO users (id, username, first_name, last_name, referred_by, is_referral_rewarded, referral_code)
+         VALUES ($1, $2, $3, $4, $5, 0, $6) RETURNING *`,
+        [userId, username, firstName, lastName, validReferrer, newRefCode]
       );
 
       let qualifiedReferral = null;
@@ -441,8 +512,6 @@ class DatabaseAdapter {
           [validReferrer]
         );
 
-        // Check if the referrer (User B) now qualifies to reward THEIR referrer (User A)
-        // Rule: User A receives 1.00 ৳ when User B refers at least 1 person
         const refUserRes = await this.pgPool.query(
           'SELECT id, first_name, username, referred_by, referral_count, is_referral_rewarded FROM users WHERE id = $1',
           [validReferrer]
@@ -465,28 +534,38 @@ class DatabaseAdapter {
         }
       }
 
-      return { user: res.rows[0], isNew: true, referrerId: validReferrer, qualifiedReferral };
+      const user = res.rows[0];
+      user.referral_link = `https://t.me/TgBoost_Monetizebot?start=${user.referral_code}`;
+      return { user, isNew: true, referrerId: validReferrer, qualifiedReferral };
     } else {
       let user = this.sqliteDb.prepare('SELECT * FROM users WHERE id = ?').get(userId);
       if (user) {
+        let refCode = user.referral_code;
+        if (!refCode) {
+          refCode = await this.generateUniqueReferralCode(userId);
+          this.sqliteDb.prepare('UPDATE users SET referral_code = ? WHERE id = ?').run(refCode, userId);
+          user.referral_code = refCode;
+        }
         this.sqliteDb.prepare(
           'UPDATE users SET username = ?, first_name = ?, last_name = ? WHERE id = ?'
         ).run(username, firstName, lastName, userId);
+        user.referral_link = `https://t.me/TgBoost_Monetizebot?start=${user.referral_code}`;
         return { user, isNew: false };
       }
 
       let validReferrer = null;
-      if (referrerId && Number(referrerId) !== userId) {
-        const ref = this.sqliteDb.prepare('SELECT id FROM users WHERE id = ?').get(Number(referrerId));
+      if (validReferrerId && Number(validReferrerId) !== userId) {
+        const ref = this.sqliteDb.prepare('SELECT id FROM users WHERE id = ?').get(Number(validReferrerId));
         if (ref) {
-          validReferrer = Number(referrerId);
+          validReferrer = Number(validReferrerId);
         }
       }
 
+      const newRefCode = await this.generateUniqueReferralCode(userId);
       this.sqliteDb.prepare(
-        `INSERT INTO users (id, username, first_name, last_name, referred_by, is_referral_rewarded)
-         VALUES (?, ?, ?, ?, ?, 0)`
-      ).run(userId, username, firstName, lastName, validReferrer);
+        `INSERT INTO users (id, username, first_name, last_name, referred_by, is_referral_rewarded, referral_code)
+         VALUES (?, ?, ?, ?, ?, 0, ?)`
+      ).run(userId, username, firstName, lastName, validReferrer, newRefCode);
 
       let qualifiedReferral = null;
 
@@ -495,8 +574,6 @@ class DatabaseAdapter {
           'UPDATE users SET referral_count = referral_count + 1 WHERE id = ?'
         ).run(validReferrer);
 
-        // Check if the referrer (User B) now qualifies to reward THEIR referrer (User A)
-        // Rule: User A receives 1.00 ৳ when User B refers at least 1 person
         const refUser = this.sqliteDb.prepare(
           'SELECT id, first_name, username, referred_by, referral_count, is_referral_rewarded FROM users WHERE id = ?'
         ).get(validReferrer);
@@ -519,6 +596,7 @@ class DatabaseAdapter {
       }
 
       user = this.sqliteDb.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+      user.referral_link = `https://t.me/TgBoost_Monetizebot?start=${user.referral_code}`;
       return { user, isNew: true, referrerId: validReferrer, qualifiedReferral };
     }
   }
@@ -551,7 +629,10 @@ class DatabaseAdapter {
       const activeInvites = referrals.filter(r => r.status === 'active').length;
       const pendingInvites = referrals.filter(r => r.status === 'pending').length;
       const totalEarned = (activeInvites * rewardPerRef).toFixed(2);
-      return { totalInvites, activeInvites, pendingInvites, totalEarned, referrals };
+      const user = await this.getUser(uid);
+      const referralCode = user ? user.referral_code : `TgBoost_Monetize${uid}`;
+      const referralLink = `https://t.me/TgBoost_Monetizebot?start=${referralCode}`;
+      return { totalInvites, activeInvites, pendingInvites, totalEarned, referrals, referralCode, referralLink };
     } else {
       const rows = this.sqliteDb.prepare(
         `SELECT id, first_name, username, referral_count, is_referral_rewarded, created_at
@@ -576,18 +657,34 @@ class DatabaseAdapter {
       const activeInvites = referrals.filter(r => r.status === 'active').length;
       const pendingInvites = referrals.filter(r => r.status === 'pending').length;
       const totalEarned = (activeInvites * rewardPerRef).toFixed(2);
-      return { totalInvites, activeInvites, pendingInvites, totalEarned, referrals };
+      const user = await this.getUser(uid);
+      const referralCode = user ? user.referral_code : `TgBoost_Monetize${uid}`;
+      const referralLink = `https://t.me/TgBoost_Monetizebot?start=${referralCode}`;
+      return { totalInvites, activeInvites, pendingInvites, totalEarned, referrals, referralCode, referralLink };
     }
   }
 
   async getUser(userId) {
     const uid = Number(userId);
+    let user = null;
     if (this.isPostgres) {
       const res = await this.pgPool.query('SELECT * FROM users WHERE id = $1', [uid]);
-      return res.rows[0] || null;
+      user = res.rows[0] || null;
+      if (user && !user.referral_code) {
+        user.referral_code = await this.generateUniqueReferralCode(uid);
+        await this.pgPool.query('UPDATE users SET referral_code = $1 WHERE id = $2', [user.referral_code, uid]);
+      }
     } else {
-      return this.sqliteDb.prepare('SELECT * FROM users WHERE id = ?').get(uid) || null;
+      user = this.sqliteDb.prepare('SELECT * FROM users WHERE id = ?').get(uid) || null;
+      if (user && !user.referral_code) {
+        user.referral_code = await this.generateUniqueReferralCode(uid);
+        this.sqliteDb.prepare('UPDATE users SET referral_code = ? WHERE id = ?').run(user.referral_code, uid);
+      }
     }
+    if (user) {
+      user.referral_link = `https://t.me/TgBoost_Monetizebot?start=${user.referral_code}`;
+    }
+    return user;
   }
 
   async addBalance(userId, amount, isEarned = true) {

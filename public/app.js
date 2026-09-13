@@ -796,6 +796,7 @@ async function loadTasks() {
     let html = '';
     tasks.forEach((task) => {
       const rewardFormatted = parseFloat(task.reward).toFixed(2);
+      const isBotTask = (task.channel_id || '').toLowerCase().endsWith('bot');
       html += `
         <div class="task-card" id="taskCard_${task.id}">
           <div class="task-top">
@@ -806,7 +807,7 @@ async function loadTasks() {
               <div class="task-info-box">
                 <div class="task-heading">${task.title}</div>
                 <div class="task-sub-label">
-                  <span>Official Channel</span>
+                  <span>${isBotTask ? 'Telegram Bot' : 'Official Channel'}</span>
                   <span>•</span>
                   <span>Task #${task.id}</span>
                 </div>
@@ -817,9 +818,9 @@ async function loadTasks() {
           <div class="task-btn-grid">
             <a href="${task.channel_link}" target="_blank" class="btn-join-channel" onclick="trackTaskClick(${task.id}); triggerHaptic('light')">
               <img src="/img/telegram.svg" width="16" height="16" alt="Telegram" style="border-radius: 50%; vertical-align: middle;">
-              <span>Join Channel / Bot</span>
+              <span>${isBotTask ? 'Start Bot' : 'Join Channel'}</span>
             </a>
-            <button class="btn-verify-task" id="verifyBtn_${task.id}" onclick="verifyTask(${task.id})">
+            <button class="btn-verify-task" id="verifyBtn_${task.id}" onclick="verifyTask(${task.id}, ${isBotTask})">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
               Verify
             </button>
@@ -846,7 +847,7 @@ function trackTaskClick(taskId) {
 }
 
 // Verify Task Action
-async function verifyTask(taskId) {
+async function verifyTask(taskId, isBotTask = false) {
   if (!currentUser) return;
   const btn = document.getElementById(`verifyBtn_${taskId}`);
   if (!btn || btn.disabled) return;
@@ -855,16 +856,26 @@ async function verifyTask(taskId) {
   const clickedAt = window.taskClickTimes[taskId];
   
   if (!clickedAt) {
-    showToast('Please tap "Join Channel / Bot" first!', 'error');
+    showToast(`Please tap "${isBotTask ? 'Start Bot' : 'Join Channel'}" first!`, 'error');
     triggerHaptic('error');
     return;
   }
 
   const elapsedSeconds = (Date.now() - clickedAt) / 1000;
   if (elapsedSeconds < 12) {
-    showToast('Verification failed! You did not start the bot or stay in the channel long enough. Please wait 12 seconds.', 'error');
+    showToast(`Verification failed! You did not start the ${isBotTask ? 'bot' : 'channel'} or stay long enough. Please wait 12 seconds.`, 'error');
     triggerHaptic('error');
     return;
+  }
+
+  let submittedLink = null;
+  if (isBotTask) {
+    submittedLink = prompt('Please paste your referral link from this bot to verify:');
+    if (!submittedLink || !submittedLink.trim()) {
+      showToast('You must provide your referral link to verify this bot task!', 'error');
+      return;
+    }
+    submittedLink = submittedLink.trim();
   }
 
   btn.disabled = true;
@@ -876,7 +887,7 @@ async function verifyTask(taskId) {
     const res = await fetch('/api/verify-task', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ taskId, userId: currentUser.id })
+      body: JSON.stringify({ taskId, userId: currentUser.id, submittedLink })
     });
 
     const result = await res.json();

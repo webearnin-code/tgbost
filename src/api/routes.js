@@ -110,7 +110,7 @@ router.get('/tasks', async (req, res) => {
 // 3. Verify Channel Task
 router.post('/verify-task', async (req, res) => {
   try {
-    const { taskId, userId } = req.body;
+    const { taskId, userId, submittedLink } = req.body;
     if (!taskId || !userId) {
       return res.status(400).json({ error: 'taskId and userId required' });
     }
@@ -129,6 +129,16 @@ router.post('/verify-task', async (req, res) => {
     }
 
     const isBotTask = task.channel_id.toLowerCase().endsWith('bot');
+
+    if (isBotTask) {
+      if (!submittedLink) {
+        return res.status(400).json({ error: 'Referral link is required for Bot tasks!' });
+      }
+      const expectedUsername = task.channel_id.replace('@', '').toLowerCase();
+      if (!submittedLink.toLowerCase().includes(expectedUsername)) {
+        return res.status(400).json({ error: `Invalid link! The link must be for @${expectedUsername}.` });
+      }
+    }
 
     let member;
     if (!isBotTask) {

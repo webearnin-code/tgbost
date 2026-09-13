@@ -88,7 +88,7 @@ async function bootstrap() {
 
     app.use(bot.webhookCallback(webhookPath));
 
-    app.listen(config.port, async () => {
+    app.listen(config.port, '0.0.0.0', async () => {
       console.log(`🌐 Web & Mini App server listening on port ${config.port}`);
       try {
         await bot.telegram.setWebhook(fullWebhookUrl);
@@ -98,8 +98,8 @@ async function bootstrap() {
       }
     });
   } else {
-    app.listen(config.port, () => {
-      console.log(`🌐 Mini App Web server running at http://localhost:${config.port}`);
+    app.listen(config.port, '0.0.0.0', () => {
+      console.log(`🌐 Mini App Web server running at http://0.0.0.0:${config.port}`);
     });
 
     try {

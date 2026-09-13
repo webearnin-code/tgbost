@@ -8,7 +8,35 @@ const apiRoutes = require('./api/routes');
 async function bootstrap() {
   console.log('🚀 Starting Telegram Task & Verification Bot + Mini App Server...');
 
-  // Initialize Database
+  // Setup Express server immediately so health checks pass on cloud providers (Render / Koyeb / Vercel)
+  const app = express();
+  app.use(express.json());
+
+  // Health check endpoint (Always available)
+  app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+  });
+
+  // Serve Mini App static files from public/
+  app.use(express.static(path.join(__dirname, '../public')));
+
+  // REST API Routes
+  app.use('/api', apiRoutes);
+
+  // Fallback all unhandled GET routes to index.html for SPA Mini App
+  app.use((req, res, next) => {
+    if (req.method === 'GET') {
+      return res.sendFile(path.join(__dirname, '../public/index.html'));
+    }
+    next();
+  });
+
+  // Start HTTP Server immediately
+  const server = app.listen(config.port, '0.0.0.0', () => {
+    console.log(`🌐 Mini App Web server running at http://0.0.0.0:${config.port}`);
+  });
+
+  // Initialize Database in background
   try {
     await db.init();
   } catch (dbErr) {
@@ -18,27 +46,12 @@ async function bootstrap() {
 
   if (!config.botToken) {
     console.error('❌ Error: BOT_TOKEN is missing in .env file!');
-    console.log('👉 Please create a .env file and add your Telegram bot token.');
-    process.exit(1);
+    console.log('👉 Please add your Telegram bot token in settings.');
+    return;
   }
 
   const bot = createBot();
-
-  // Setup Express server (Serves Mini App Frontend & REST APIs)
-  const app = express();
-  app.use(express.json());
   app.set('telegramBot', bot);
-
-  // Serve Mini App static files from public/
-  app.use(express.static(path.join(__dirname, '../public')));
-
-  // REST API Routes
-  app.use('/api', apiRoutes);
-
-  // Health check endpoint
-  app.get('/health', (req, res) => {
-    res.status(200).send('OK');
-  });
 
   // Register commands in Telegram UI
   try {
@@ -73,35 +86,19 @@ async function bootstrap() {
     console.warn('⚠️ Could not set bot menu commands:', cmdErr.message);
   }
 
-  // Fallback all unhandled routes to index.html for SPA Mini App
-  app.use((req, res, next) => {
-    if (req.method === 'GET') {
-      return res.sendFile(path.join(__dirname, '../public/index.html'));
-    }
-    next();
-  });
-
   // Webhook vs Polling Mode
   if (config.webhookDomain) {
     const webhookPath = `/webhook`;
     const fullWebhookUrl = `${config.webhookDomain.replace(/\/$/, '')}${webhookPath}`;
 
     app.use(bot.webhookCallback(webhookPath));
-
-    app.listen(config.port, '0.0.0.0', async () => {
-      console.log(`🌐 Web & Mini App server listening on port ${config.port}`);
-      try {
-        await bot.telegram.setWebhook(fullWebhookUrl);
-        console.log(`✅ Webhook set successfully to: ${fullWebhookUrl}`);
-      } catch (err) {
-        console.error('❌ Failed to set webhook:', err.message);
-      }
-    });
+    try {
+      await bot.telegram.setWebhook(fullWebhookUrl);
+      console.log(`✅ Webhook set successfully to: ${fullWebhookUrl}`);
+    } catch (err) {
+      console.error('❌ Failed to set webhook:', err.message);
+    }
   } else {
-    app.listen(config.port, '0.0.0.0', () => {
-      console.log(`🌐 Mini App Web server running at http://0.0.0.0:${config.port}`);
-    });
-
     try {
       await bot.telegram.deleteWebhook();
     } catch (e) {}

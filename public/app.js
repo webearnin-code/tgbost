@@ -1249,15 +1249,34 @@ async function deleteAdminTask(taskId) {
 
 // Admin Create Task
 async function submitAdminCreateTask() {
+  const type = document.getElementById('adminTaskType').value; // 'channel' or 'bot'
   const title = document.getElementById('adminTaskTitle').value.trim();
-  const channelId = document.getElementById('adminTaskChannelId').value.trim();
   const link = document.getElementById('adminTaskLink').value.trim();
   const reward = parseFloat(document.getElementById('adminTaskReward').value);
   const maxUsers = parseInt(document.getElementById('adminTaskMaxUsers').value || '0', 10);
 
-  if (!title || !channelId || !link || isNaN(reward) || reward <= 0) {
+  if (!title || !link || isNaN(reward) || reward <= 0) {
     showToast('Please fill all required fields correctly.', 'error');
     return;
+  }
+
+  // Auto-extract channel_id (username) from link
+  let extractedId = '';
+  let formattedLink = link;
+  if (formattedLink.startsWith('t.me/')) formattedLink = 'https://' + formattedLink;
+  const match = formattedLink.match(/t\.me\/(?:\+)?([a-zA-Z0-9_]+)/i);
+
+  if (type === 'bot') {
+    if (match) extractedId = match[1];
+    else extractedId = 'bot';
+    if (!extractedId.toLowerCase().endsWith('bot')) extractedId += 'bot';
+    extractedId = '@' + extractedId;
+  } else {
+    if (match && !formattedLink.includes('t.me/+')) {
+      extractedId = '@' + match[1];
+    } else {
+      extractedId = formattedLink; 
+    }
   }
 
   triggerHaptic('medium');
@@ -1269,8 +1288,8 @@ async function submitAdminCreateTask() {
         adminId: currentUser.id,
         adminUsername: currentUser.username || '',
         title,
-        channel_id: channelId,
-        channel_link: link,
+        channel_id: extractedId,
+        channel_link: formattedLink,
         reward,
         max_users: maxUsers
       })
@@ -1279,7 +1298,6 @@ async function submitAdminCreateTask() {
     if (data.success) {
       showToast('Task published successfully!', 'success');
       document.getElementById('adminTaskTitle').value = '';
-      document.getElementById('adminTaskChannelId').value = '';
       document.getElementById('adminTaskLink').value = '';
       document.getElementById('adminTaskReward').value = '';
       document.getElementById('adminTaskMaxUsers').value = '0';
@@ -1303,15 +1321,12 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-// Update Referral Link Display Based on Selected Type (Clean Web or Telegram Bot)
+// Update Referral Link Display (Only Telegram Bot Link)
 function updateReferralLinkDisplay() {
   const refLinkInput = document.getElementById('referralLinkInput');
   if (!refLinkInput) return;
-  const linkToDisplay = (currentReferralType === 'web' && userWebRefLink)
-    ? userWebRefLink
-    : (userTgRefLink || userWebRefLink);
-  if (linkToDisplay) {
-    refLinkInput.value = linkToDisplay;
+  if (userTgRefLink) {
+    refLinkInput.value = userTgRefLink;
   }
 }
 
@@ -1591,25 +1606,7 @@ function setupEventListeners() {
   if (submitBdtWithdrawBtn) submitBdtWithdrawBtn.addEventListener('click', submitBdtWithdrawal);
   if (submitUsdtWithdrawBtn) submitUsdtWithdrawBtn.addEventListener('click', submitUsdtWithdrawal);
 
-  // Referral Format Switcher Buttons (Clean Web Link vs Telegram Bot Link)
-  const refTypeWebBtn = document.getElementById('refTypeWebBtn');
-  const refTypeTgBtn = document.getElementById('refTypeTgBtn');
-  if (refTypeWebBtn && refTypeTgBtn) {
-    refTypeWebBtn.addEventListener('click', () => {
-      currentReferralType = 'web';
-      refTypeWebBtn.classList.add('active');
-      refTypeTgBtn.classList.remove('active');
-      updateReferralLinkDisplay();
-      triggerHaptic('light');
-    });
-    refTypeTgBtn.addEventListener('click', () => {
-      currentReferralType = 'tg';
-      refTypeTgBtn.classList.add('active');
-      refTypeWebBtn.classList.remove('active');
-      updateReferralLinkDisplay();
-      triggerHaptic('light');
-    });
-  }
+
 
   // Copy Referral Link
   const copyRefBtn = document.getElementById('copyRefBtn');

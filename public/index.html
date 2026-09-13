@@ -44,7 +44,7 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="/style.css?v=2.7">
+  <link rel="stylesheet" href="/style.css?v=2.8">
 </head>
 <body class="dark-theme" data-theme="dark">
   <!-- Telegram Only Access Gate (Shown when accessed via external browser) -->
@@ -410,21 +410,8 @@
           Share your clean referral link. Earn <b style="color: #00c853;">+1.00 ৳</b> reward when your invited member activates!
         </p>
 
-        <!-- Format Switcher: Clean Web Link vs Telegram Bot Link -->
-        <div style="margin-top: 10px; display: flex; justify-content: center;">
-          <div class="ref-type-switcher">
-            <button type="button" class="ref-type-btn active" id="refTypeWebBtn">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-              <span>Web Link</span>
-            </button>
-            <button type="button" class="ref-type-btn" id="refTypeTgBtn">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.37.75-.56 2.93-1.28 4.88-2.12 5.86-2.54 2.79-1.16 3.37-1.36 3.75-1.37.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
-              <span>Telegram Bot Link</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="link-copy-container" style="margin-top: 4px;">
+        <!-- Referral Link Display -->
+        <div class="link-copy-container" style="margin-top: 10px;">
           <input type="text" id="referralLinkInput" class="link-text-field" readonly value="Loading link...">
           <button class="link-copy-button" id="copyRefBtn">Copy</button>
         </div>
@@ -544,20 +531,23 @@
 
       <!-- Create Task Form -->
       <div class="content-card">
-        <div style="font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 10px;">Add New Channel Task</div>
+        <div style="font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 10px;">Create New Task</div>
         
         <div class="form-group">
+          <label class="form-label">Task Type:</label>
+          <select id="adminTaskType" class="rect-input">
+            <option value="channel">Group / Channel</option>
+            <option value="bot">Telegram Bot</option>
+          </select>
+        </div>
+
+        <div class="form-group">
           <label class="form-label">Task Title:</label>
-          <input type="text" id="adminTaskTitle" class="rect-input" placeholder="e.g. Official News Channel">
+          <input type="text" id="adminTaskTitle" class="rect-input" placeholder="e.g. Join Official Channel">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Channel Username / ID (Bot must be Admin):</label>
-          <input type="text" id="adminTaskChannelId" class="rect-input" placeholder="@my_channel or -1001234567890">
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Channel Join Link:</label>
+          <label class="form-label">Join Link (URL):</label>
           <input type="url" id="adminTaskLink" class="rect-input" placeholder="https://t.me/my_channel">
         </div>
 
@@ -715,6 +705,6 @@
     </nav>
   </div>
 
-  <script src="/app.js?v=2.7"></script>
+  <script src="/app.js?v=2.8"></script>
 </body>
 </html>

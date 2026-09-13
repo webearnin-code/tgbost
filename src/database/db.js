@@ -480,20 +480,8 @@ class DatabaseAdapter {
   }
 
   async generateUniqueReferralCode(userId) {
-    // Generates branded masked referral code replacing 'bot' with unique numbers: TgBoost_Monetize<number>
-    let baseNum = 100000 + (Math.abs(Number(userId)) % 899999);
-    let code = `TgBoost_Monetize${baseNum}`;
-    let attempts = 0;
-    while (attempts < 50) {
-      const existing = await this.getUserByReferralCode(code);
-      if (!existing || Number(existing.id) === Number(userId)) {
-        return code;
-      }
-      baseNum = 100000 + Math.floor(Math.random() * 899999);
-      code = `TgBoost_Monetize${baseNum}`;
-      attempts++;
-    }
-    return `TgBoost_Monetize${Date.now().toString().slice(-6)}`;
+    // Uses the user's Telegram ID as the referral code to keep it clean (just numbers)
+    return String(userId);
   }
 
   // ================= USER OPERATIONS =================
@@ -699,7 +687,7 @@ class DatabaseAdapter {
       const totalEarned = (activeInvites * rewardPerRef).toFixed(2);
       const user = await this.getUser(uid);
       const referralCode = user ? user.referral_code : `TgBoost_Monetize${uid}`;
-      const referralLink = `https://t.me/TgBoost_Monetizebot?start=${referralCode}`;
+      const referralLink = `https://t.me/tgbosttgbost_bot?start=${referralCode}`;
       const webReferralLink = `${webBase}/r/${referralCode}`;
       return { totalInvites, activeInvites, pendingInvites, totalEarned, referrals, referralCode, referralLink, webReferralLink };
     }
@@ -711,19 +699,19 @@ class DatabaseAdapter {
     if (this.isPostgres) {
       const res = await this.pgPool.query('SELECT * FROM users WHERE id = $1', [uid]);
       user = res.rows[0] || null;
-      if (user && !user.referral_code) {
+      if (user && (!user.referral_code || user.referral_code.includes('TgBoost_Monetize'))) {
         user.referral_code = await this.generateUniqueReferralCode(uid);
         await this.pgPool.query('UPDATE users SET referral_code = $1 WHERE id = $2', [user.referral_code, uid]);
       }
     } else {
       user = this.sqliteDb.prepare('SELECT * FROM users WHERE id = ?').get(uid) || null;
-      if (user && !user.referral_code) {
+      if (user && (!user.referral_code || user.referral_code.includes('TgBoost_Monetize'))) {
         user.referral_code = await this.generateUniqueReferralCode(uid);
         this.sqliteDb.prepare('UPDATE users SET referral_code = ? WHERE id = ?').run(user.referral_code, uid);
       }
     }
     if (user) {
-      user.referral_link = `https://t.me/TgBoost_Monetizebot?start=${user.referral_code}`;
+      user.referral_link = `https://t.me/tgbosttgbost_bot?start=${user.referral_code}`;
     }
     return user;
   }
